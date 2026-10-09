@@ -1,1 +1,2 @@
-import MvFormalGroup.Basic
+import MvFormalGroup.ForMathlib.MvFormalGroup.Basic
+import MvFormalGroup.ForMathlib.FormalGroup.Basic

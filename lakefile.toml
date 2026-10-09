@@ -16,4 +16,3 @@ rev = "v4.35.0-rc4"
 
 [[lean_lib]]
 name = "MvFormalGroup"
-roots = ["MvFormalGroup", "FormalGroup"]

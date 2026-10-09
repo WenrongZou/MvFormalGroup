@@ -5,7 +5,7 @@ Authors: Wenrong Zou
 -/
 module
 
-public import MvFormalGroup.Basic
+public import MvFormalGroup.ForMathlib.MvFormalGroup.Basic
 public import Mathlib.RingTheory.MvPowerSeries.Rename
 
 /-!
