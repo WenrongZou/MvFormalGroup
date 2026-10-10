@@ -1,2 +1,4 @@
 import MvFormalGroup.ForMathlib.MvFormalGroup.Basic
+import MvFormalGroup.ForMathlib.MvFormalGroup.Inverse
+import MvFormalGroup.ForMathlib.MvPowerSeries.Implicit
 import MvFormalGroup.ForMathlib.FormalGroup.Basic
