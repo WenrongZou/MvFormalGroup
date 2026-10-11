@@ -7,6 +7,7 @@ module
 
 public import MvFormalGroup.ForMathlib.MvFormalGroup.Basic
 public import Mathlib.RingTheory.MvPowerSeries.Rename
+public import Mathlib.RingTheory.PowerSeries.Substitution
 
 /-!
 # One-dimensional formal group laws
@@ -17,6 +18,9 @@ therefore apply directly. Commutativity remains a separate property.
 
 `FormalGroup.toPowerSeries` selects the unique coordinate and renames its variables
 along `Fin 2 × Unit ≃ Fin 2`: `0` is `X` and `1` is `Y`.
+
+`Xzero_eq_X` and `zeroX_eq_X` give the identity equations in `PowerSeries R`.
+`add_zero` and `zero_add` extend them to any admissible substituted series.
 -/
 
 @[expose] public section
@@ -124,6 +128,75 @@ theorem assoc (F : FormalGroup R) :
     rename_subst _ _ (by intro i; fin_cases i <;> simp [hc])] at h
   simpa [toPowerSeries, rename_vec,
     rename_subst _ _ (hv 0 1), rename_subst _ _ (hv 1 2)] using h
+
+/-- Two admissible series can be substituted into a one-dimensional formal group law. -/
+theorem hasSubst_pair {τ : Type*} {x y : MvPowerSeries τ R}
+    (hx : PowerSeries.HasSubst x) (hy : PowerSeries.HasSubst y) : HasSubst ![x, y] :=
+  hasSubst_of_constantCoeff_nilpotent (by intro i; fin_cases i <;> assumption)
+
+/-- Substitution into the one-dimensional law agrees with substitution into its
+underlying one-coordinate multidimensional law. -/
+theorem subst_toPowerSeries {τ : Type*} (F : FormalGroup R)
+    (x y : MvPowerSeries τ R) (hx : PowerSeries.HasSubst x) (hy : PowerSeries.HasSubst y) :
+    F.toPowerSeries.subst ![x, y] =
+      (MvFormalGroup.toPowerSeries F ()).subst (uncurry ![fun _ ↦ x, fun _ ↦ y]) := by
+  change (rename (Equiv.prodUnique (Fin 2) Unit) (MvFormalGroup.toPowerSeries F ())).subst
+    ![x, y] = _
+  rw [rename_eq_subst, subst_comp_subst_apply (HasSubst.X_comp _) (hasSubst_pair hx hy)]
+  congr 1
+  funext ⟨b, ⟨⟩⟩
+  fin_cases b <;> simp [subst_X (hasSubst_pair hx hy), uncurry]
+
+/-- Associativity after substituting series with zero constant coefficients. -/
+theorem assoc_subst {τ : Type*} (F : FormalGroup R) (x y z : MvPowerSeries τ R)
+    (hx : constantCoeff x = 0) (hy : constantCoeff y = 0) (hz : constantCoeff z = 0) :
+    F.toPowerSeries.subst ![F.toPowerSeries.subst ![x, y], z] =
+      F.toPowerSeries.subst ![x, F.toPowerSeries.subst ![y, z]] := by
+  have hxy := PowerSeries.HasSubst.of_constantCoeff_zero hx
+  have hyy := PowerSeries.HasSubst.of_constantCoeff_zero hy
+  have hzy := PowerSeries.HasSubst.of_constantCoeff_zero hz
+  have hc (a b : MvPowerSeries τ R) (ha : constantCoeff a = 0) (hb : constantCoeff b = 0) :
+      PowerSeries.HasSubst (F.toPowerSeries.subst ![a, b]) :=
+    PowerSeries.HasSubst.of_constantCoeff_zero (constantCoeff_subst_eq_zero
+      (hasSubst_pair (.of_constantCoeff_zero ha) (.of_constantCoeff_zero hb))
+      (by intro i; fin_cases i <;> assumption) F.zero_constantCoeff)
+  rw [subst_toPowerSeries F _ _ (hc x y hx hy) hzy,
+    subst_toPowerSeries F _ _ hxy (hc y z hy hz),
+    subst_toPowerSeries F x y hxy hyy, subst_toPowerSeries F y z hyy hzy]
+  exact MvFormalGroup.assoc_subst F (fun _ ↦ x) (fun _ ↦ y) (fun _ ↦ z)
+    (fun _ ↦ hx) (fun _ ↦ hy) (fun _ ↦ hz) ()
+
+/-- Zero is a right identity after any admissible substitution. -/
+@[simp]
+theorem add_zero {τ : Type*} (F : FormalGroup R) {f : MvPowerSeries τ R}
+    (hf : PowerSeries.HasSubst f) : F.toPowerSeries.subst ![f, 0] = f := by
+  rw [subst_toPowerSeries F f 0 hf PowerSeries.HasSubst.zero]
+  simpa only [← Pi.zero_def] using MvFormalGroup.add_zero F hf.const ()
+
+/-- Zero is a left identity after any admissible substitution. -/
+@[simp]
+theorem zero_add {τ : Type*} (F : FormalGroup R) {f : MvPowerSeries τ R}
+    (hf : PowerSeries.HasSubst f) : F.toPowerSeries.subst ![0, f] = f := by
+  rw [subst_toPowerSeries F 0 f PowerSeries.HasSubst.zero hf]
+  simpa only [← Pi.zero_def] using MvFormalGroup.zero_add F hf.const ()
+
+/-- The one-variable series `F(X, 0)`. -/
+abbrev Xzero (F : FormalGroup R) : PowerSeries R :=
+  F.toPowerSeries.subst ![PowerSeries.X, 0]
+
+/-- The one-variable series `F(0, X)`. -/
+abbrev zeroX (F : FormalGroup R) : PowerSeries R :=
+  F.toPowerSeries.subst ![0, PowerSeries.X]
+
+/-- The right identity equation `F(X, 0) = X`. -/
+@[simp]
+theorem Xzero_eq_X (F : FormalGroup R) : F.Xzero = PowerSeries.X :=
+  F.add_zero PowerSeries.HasSubst.X'
+
+/-- The left identity equation `F(0, X) = X`. -/
+@[simp]
+theorem zeroX_eq_X (F : FormalGroup R) : F.zeroX = PowerSeries.X :=
+  F.zero_add PowerSeries.HasSubst.X'
 
 /-- Commutativity of a one-dimensional formal group law. -/
 abbrev IsComm (F : FormalGroup R) : Prop := MvFormalGroup.IsComm F
