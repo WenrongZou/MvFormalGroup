@@ -21,6 +21,12 @@ along `Fin 2 × Unit ≃ Fin 2`: `0` is `X` and `1` is `Y`.
 
 `Xzero_eq_X` and `zeroX_eq_X` give the identity equations in `PowerSeries R`.
 `add_zero` and `zero_add` extend them to any admissible substituted series.
+
+`Point F S` is the type of topologically nilpotent elements of `S`. When `S` is a
+complete Hausdorff linearly topologized `R`-algebra, evaluation of `F` defines an
+`AddMonoid` structure on these points, and an `AddCommMonoid` structure if `F.IsComm`.
+For power series over discrete coefficients, these are precisely the series with
+nilpotent constant coefficient, and addition agrees with substitution into `F`.
 -/
 
 @[expose] public section
@@ -237,5 +243,162 @@ abbrev additive (R : Type*) [CommRing R] : FormalGroup R := MvFormalGroup.additi
 @[simp]
 theorem additive_toPowerSeries : (additive R).toPowerSeries = X 0 + X 1 := by
   simp [toPowerSeries, additive, MvFormalGroup.additive]
+
+section Evaluation
+
+variable (F : FormalGroup R)
+variable {S : Type*} [CommRing S] [UniformSpace S] [IsUniformAddGroup S]
+  [IsLinearTopology S S] [CompleteSpace S] [T2Space S] [IsTopologicalRing S]
+  [UniformSpace R] [DiscreteUniformity R] [Algebra R S]
+
+/-- Zero is a right identity for evaluation at topologically nilpotent elements. -/
+@[simp]
+theorem eval₂_add_zero {a : S} (ha : IsTopologicallyNilpotent a) :
+    F.toPowerSeries.eval₂ (algebraMap R S) ![a, 0] = a := by
+  have hb : HasEval (fun _ : Unit ↦ a) := ⟨fun _ ↦ ha, by simp⟩
+  calc
+    _ = eval₂ (algebraMap R S) (fun _ : Unit ↦ a) F.Xzero := by
+      rw [eval₂_subst (a := ![PowerSeries.X, 0]) HasSubst.X_zero hb]
+      congr! 2 with i
+      fin_cases i <;> simp [PowerSeries.X, ← MvPolynomial.coe_zero]
+    _ = a := by simp [Xzero_eq_X, PowerSeries.X]
+
+/-- Zero is a left identity for evaluation at topologically nilpotent elements. -/
+@[simp]
+theorem eval₂_zero_add {a : S} (ha : IsTopologicallyNilpotent a) :
+    F.toPowerSeries.eval₂ (algebraMap R S) ![0, a] = a := by
+  have hb : HasEval (fun _ : Unit ↦ a) := ⟨fun _ ↦ ha, by simp⟩
+  calc
+    _ = eval₂ (algebraMap R S) (fun _ : Unit ↦ a) F.zeroX := by
+      rw [eval₂_subst (a := ![0, PowerSeries.X]) HasSubst.zero_X hb]
+      congr! 2 with i
+      fin_cases i <;> simp [PowerSeries.X, ← MvPolynomial.coe_zero]
+    _ = a := by simp [zeroX_eq_X, PowerSeries.X]
+
+/-- Associativity after evaluation at topologically nilpotent elements. -/
+theorem eval₂_assoc {a b c : S} (ha : IsTopologicallyNilpotent a)
+    (hb : IsTopologicallyNilpotent b) (hc : IsTopologicallyNilpotent c) :
+    F.toPowerSeries.eval₂ (algebraMap R S) ![F.toPowerSeries.eval₂ (algebraMap R S) ![a, b], c] =
+      F.toPowerSeries.eval₂ (algebraMap R S)
+        ![a, F.toPowerSeries.eval₂ (algebraMap R S) ![b, c]] := by
+  have he : HasEval ![a, b, c] := ⟨fun s ↦ by fin_cases s <;> assumption, by simp⟩
+  have {i j : Fin 3} : eval₂ (algebraMap R S) ![a, b, c] (F.toPowerSeries.subst ![X i, X j]) =
+      F.toPowerSeries.eval₂ (algebraMap R S) ![![a, b, c] i, ![a, b, c] j] := by
+    rw [eval₂_subst HasSubst.X_X he]
+    congr! 2 with s
+    fin_cases s <;> simp
+  calc
+    _ = (F.toPowerSeries.subst ![F.toPowerSeries.subst ![X (0 : Fin 3), X 1], X 2]).eval₂
+          (algebraMap R S) ![a, b, c] := by
+      rw [eval₂_subst (HasSubst.cons_subst_zero_left 0 1 2 F.zero_constantCoeff) he]
+      congr! 2 with i
+      fin_cases i <;> simp [this]
+    _ = F.toPowerSeries.eval₂ (algebraMap R S)
+          ![a, F.toPowerSeries.eval₂ (algebraMap R S) ![b, c]] := by
+      rw [F.assoc, eval₂_subst (HasSubst.cons_subst_zero_right 0 1 2 F.zero_constantCoeff) he]
+      congr! 2 with i
+      fin_cases i <;> simp [this]
+
+/-- Commutativity after evaluation at topologically nilpotent elements. -/
+theorem eval₂_comm [F.IsComm] {a b : S} (ha : IsTopologicallyNilpotent a)
+    (hb : IsTopologicallyNilpotent b) :
+    F.toPowerSeries.eval₂ (algebraMap R S) ![a, b] =
+      F.toPowerSeries.eval₂ (algebraMap R S) ![b, a] := by
+  have he : HasEval ![a, b] := ⟨fun s ↦ by fin_cases s <;> assumption, by simp⟩
+  nth_rw 1 [F.comm]
+  rw [eval₂_subst HasSubst.X_X he]
+  congr! 2 with i
+  fin_cases i <;> simp
+
+end Evaluation
+
+section Point
+
+variable (F : FormalGroup R) (S : Type*) [CommRing S] [TopologicalSpace S]
+
+/-- Points of a formal group law in a topological ring. The underlying elements are
+topologically nilpotent; the formal group law determines their addition. -/
+@[nolint unusedArguments]
+def Point (_F : FormalGroup R) := {a : S // IsTopologicallyNilpotent a}
+
+variable {S} in
+lemma hasEval_point (x y : F.Point S) : HasEval ![x.val, y.val] where
+  hpow s := by fin_cases s <;> simp [x.prop, y.prop]
+  tendsto_zero := by simp
+
+instance : Zero (F.Point S) where
+  zero := ⟨0, .zero⟩
+
+@[simp]
+lemma zero_apply : (0 : F.Point S).val = 0 := rfl
+
+end Point
+
+section PointAddition
+
+variable (F : FormalGroup R) (S : Type*) [CommRing S] [UniformSpace S]
+  [IsUniformAddGroup S] [CompleteSpace S] [T2Space S] [IsTopologicalRing S]
+  [IsLinearTopology S S] [Algebra R S]
+
+open WithPiTopology in
+instance : Add (F.Point S) where
+  add x y :=
+    letI : UniformSpace R := ⊥
+    haveI : ContinuousSMul R S := DiscreteTopology.instContinuousSMul R S
+    ⟨F.toPowerSeries.aeval (F.hasEval_point x y),
+      .map (continuous_aeval (F.hasEval_point x y))
+        (isTopologicallyNilpotent_of_constantCoeff_zero F.zero_constantCoeff)⟩
+
+/-- Addition of points is evaluation of the formal group law. -/
+@[simp]
+lemma add_eq_eval₂ [UniformSpace R] [DiscreteUniformity R] {x y : F.Point S} :
+    (x + y).val = F.toPowerSeries.eval₂ (algebraMap R S) ![x.val, y.val] := by
+  obtain rfl := DiscreteUniformity.eq_bot (X := R)
+  let : UniformSpace R := ⊥
+  have : ContinuousSMul R S := DiscreteTopology.instContinuousSMul R S
+  exact congrFun (coe_aeval (F.hasEval_point x y)) F.toPowerSeries
+
+instance : AddMonoid (F.Point S) where
+  zero_add x := Subtype.ext <| by
+    let : UniformSpace R := ⊥
+    rw [add_eq_eval₂, zero_apply, F.eval₂_zero_add x.prop]
+  add_zero x := Subtype.ext <| by
+    let : UniformSpace R := ⊥
+    rw [add_eq_eval₂, zero_apply, F.eval₂_add_zero x.prop]
+  nsmul := nsmulRec
+  add_assoc x y z := Subtype.ext <| by
+    let : UniformSpace R := ⊥
+    simp only [add_eq_eval₂]
+    exact F.eval₂_assoc x.prop y.prop z.prop
+
+instance [F.IsComm] : AddCommMonoid (F.Point S) where
+  add_comm x y := Subtype.ext <| by
+    let : UniformSpace R := ⊥
+    simp [add_eq_eval₂, F.eval₂_comm x.prop y.prop]
+
+end PointAddition
+
+section PowerSeriesPoints
+
+open WithPiTopology
+
+variable (F : FormalGroup R) (σ : Type*)
+
+/-- For power series over a discrete coefficient ring, the points are precisely
+the series whose constant coefficients are nilpotent. -/
+def pointMvPowerSeriesEquiv [TopologicalSpace R] [DiscreteTopology R] :
+    F.Point (MvPowerSeries σ R) ≃ {f : MvPowerSeries σ R // PowerSeries.HasSubst f} where
+  toFun f := ⟨f.val, (isTopologicallyNilpotent_iff_constantCoeff_isNilpotent f.val).mp f.prop⟩
+  invFun f := ⟨f.val, (isTopologicallyNilpotent_iff_constantCoeff_isNilpotent f.val).mpr f.prop⟩
+  left_inv _ := rfl
+  right_inv _ := rfl
+
+/-- Addition of power series points agrees with substitution into the formal group law. -/
+lemma add_eq_subst [UniformSpace R] [DiscreteUniformity R]
+    {x y : F.Point (MvPowerSeries σ R)} :
+    (x + y).val = F.toPowerSeries.subst ![x.val, y.val] := by
+  rw [add_eq_eval₂, subst_eq_eval₂]
+
+end PowerSeriesPoints
 
 end FormalGroup
