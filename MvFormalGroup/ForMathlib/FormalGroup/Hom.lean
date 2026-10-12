@@ -35,7 +35,7 @@ variable {R : Type*} [CommRing R]
 abbrev Hom (F G : FormalGroup R) := MvFormalGroup.Hom F G
 
 /-- Substitution into `F(X, Y)` is substitution into the underlying one-coordinate law. -/
-private theorem subst_toPowerSeries_eq (F : FormalGroup R) {τ : Type*}
+theorem subst_toPowerSeries_eq (F : FormalGroup R) {τ : Type*}
     {c : Fin 2 → MvPowerSeries τ R} (hc : HasSubst c) :
     F.toPowerSeries.subst c =
       (MvFormalGroup.toPowerSeries F ()).subst (fun p : Fin 2 × Unit ↦ c p.1) := by

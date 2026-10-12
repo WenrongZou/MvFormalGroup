@@ -35,18 +35,15 @@ variable {R : Type*} [CommRing R] {σ τ : Type*}
 
 lemma hasSubst_pair [Finite σ] {x y : σ → MvPowerSeries τ R}
     (hx : ∀ i, constantCoeff (x i) = 0) (hy : ∀ i, constantCoeff (y i) = 0) :
-    HasSubst (Function.uncurry ![x, y]) := by
-  apply hasSubst_of_constantCoeff_zero
-  rintro ⟨b, i⟩
-  fin_cases b <;> simp [Function.uncurry, hx, hy]
+    HasSubst (Function.uncurry ![x, y]) :=
+  hasSubst_of_constantCoeff_zero fun ⟨b, i⟩ => by fin_cases b <;> simp [hx, hy]
 
 @[simp]
-lemma constantCoeff_curry_X {k : ℕ} (b : Fin k) (i : σ) :
-    constantCoeff (Function.curry (X (R := R)) b i) = 0 := constantCoeff_X _
+lemma constantCoeff_curry_X (i : τ) (j : σ) :
+    constantCoeff (Function.curry (X (R := R)) i j) = 0 := constantCoeff_X _
 
 lemma constantCoeff_subst_pair [Finite σ] {f : σ → MvPowerSeries (Fin 2 × σ) R}
-    {x y : σ → MvPowerSeries τ R}
-    (hf : ∀ i, constantCoeff (f i) = 0)
+    {x y : σ → MvPowerSeries τ R} (hf : ∀ i, constantCoeff (f i) = 0)
     (hx : ∀ i, constantCoeff (x i) = 0) (hy : ∀ i, constantCoeff (y i) = 0)
     (i : σ) : constantCoeff ((f i).subst (uncurry ![x, y])) = 0 := by
   apply constantCoeff_subst_eq_zero (hasSubst_pair hx hy) _ (hf i)
@@ -122,20 +119,21 @@ class IsComm (F : MvFormalGroup σ R) : Prop where
 /-- The coefficient axioms give exactly the prescribed truncation modulo degree two. -/
 theorem truncTotal_two (F : MvFormalGroup σ R) (i : σ) :
     (F.toPowerSeries i).truncTotal 2 = MvPolynomial.X (0, i) + MvPolynomial.X (1, i) := by
-  classical
   ext d
   by_cases hd : d.degree < 2
   · rw [coeff_truncTotal _ hd]
-    rcases show d.degree = 0 ∨ d.degree = 1 by omega with hzero | hone
-    · have : d = 0 := d.degree_eq_zero_iff.mp hzero
-      simp [this, F.zero_constantCoeff, MvPolynomial.coeff_X]
+    obtain hzero | hone : d.degree = 0 ∨ d.degree = 1 := by omega
+    · simp [d.degree_eq_zero_iff.mp hzero, F.zero_constantCoeff, MvPolynomial.coeff_X]
     · obtain ⟨⟨b, j⟩, rfl⟩ := (Finsupp.sum_eq_one_iff d).mp hone
       fin_cases b <;>
-        simp [F.lin_coeff_X, F.lin_coeff_Y, MvPolynomial.coeff_X,
-          Finsupp.single_left_inj, eq_comm]
-  · rw [coeff_truncTotal_eq_zero _ (by omega)]
-    have hx : d ≠ single (0, i) 1 := by rintro rfl; simp at hd
-    have hy : d ≠ single (1, i) 1 := by rintro rfl; simp at hd
+        simp [F.lin_coeff_X, F.lin_coeff_Y, MvPolynomial.coeff_X, Finsupp.single_left_inj, eq_comm]
+  · rw [coeff_truncTotal_eq_zero _ (not_lt.mp hd)]
+    have hx : d ≠ single (0, i) 1 := by
+      intro rfl
+      simp at hd
+    have hy : d ≠ single (1, i) 1 := by
+      intro rfl
+      simp at hd
     simp [MvPolynomial.coeff_X, Ne.symm hx, Ne.symm hy]
 
 omit [Finite σ] [DecidableEq σ] in
@@ -150,15 +148,12 @@ private theorem subst_pair_subst {τ υ : Type*} (f : MvPowerSeries (Fin 2 × σ
   fin_cases b <;> rfl
 
 /-- Associativity after substituting three families with zero constant coefficients. -/
-theorem assoc_subst (F : MvFormalGroup σ R) {τ : Type*}
-    (x y z : σ → MvPowerSeries τ R)
-    (hx : ∀ i, constantCoeff (x i) = 0)
-    (hy : ∀ i, constantCoeff (y i) = 0)
+theorem assoc_subst (F : MvFormalGroup σ R) {τ : Type*} (x y z : σ → MvPowerSeries τ R)
+    (hx : ∀ i, constantCoeff (x i) = 0) (hy : ∀ i, constantCoeff (y i) = 0)
     (hz : ∀ i, constantCoeff (z i) = 0) (i : σ) :
-    (F.toPowerSeries i).subst
-      (uncurry ![fun j ↦ (F.toPowerSeries j).subst (uncurry ![x, y]), z]) =
-    (F.toPowerSeries i).subst
-      (uncurry ![x, fun j ↦ (F.toPowerSeries j).subst (uncurry ![y, z])]) := by
+    (F.toPowerSeries i).subst (uncurry ![fun j ↦ (F.toPowerSeries j).subst (uncurry ![x, y]), z]) =
+      (F.toPowerSeries i).subst
+        (uncurry ![x, fun j ↦ (F.toPowerSeries j).subst (uncurry ![y, z])]) := by
   let a : Fin 3 × σ → MvPowerSeries τ R := uncurry ![x, y, z]
   have ha : HasSubst a := hasSubst_of_constantCoeff_zero (by
     rintro ⟨b, j⟩; fin_cases b <;> simp [a, hx, hy, hz])
@@ -167,10 +162,7 @@ theorem assoc_subst (F : MvFormalGroup σ R) {τ : Type*}
   have h := congrArg (subst a) (F.assoc i)
   rw [subst_pair_subst _ _ _ (hasSubst_pair (hc 0 1) (hv 2)) ha,
     subst_pair_subst _ _ _ (hasSubst_pair (hv 0) (hc 1 2)) ha] at h
-  simpa only [subst_pair_subst _ _ _ (hasSubst_pair (hv 0) (hv 1)) ha,
-    subst_pair_subst _ _ _ (hasSubst_pair (hv 1) (hv 2)) ha,
-    curry, subst_X ha, a, uncurry, Matrix.cons_val_zero,
-    Matrix.cons_val_one, Matrix.cons_val_two, Matrix.tail_cons, Matrix.head_cons] using h
+  simpa [subst_pair_subst, subst_X ha, a, hasSubst_pair, ha] using h
 
 /-- The family of series `F(X, 0)`. -/
 abbrev Xzero (F : MvFormalGroup σ R) : σ → MvPowerSeries σ R :=
@@ -183,12 +175,12 @@ abbrev zeroX (F : MvFormalGroup σ R) : σ → MvPowerSeries σ R :=
 @[simp]
 theorem constantCoeff_Xzero (F : MvFormalGroup σ R) (i : σ) :
     constantCoeff (F.Xzero i) = 0 :=
-  constantCoeff_subst_pair F.zero_constantCoeff (fun j ↦ constantCoeff_X j) (by simp) i
+  constantCoeff_subst_pair F.zero_constantCoeff constantCoeff_X (by simp) i
 
 @[simp]
 theorem constantCoeff_zeroX (F : MvFormalGroup σ R) (i : σ) :
     constantCoeff (F.zeroX i) = 0 :=
-  constantCoeff_subst_pair F.zero_constantCoeff (by simp) (fun j ↦ constantCoeff_X j) i
+  constantCoeff_subst_pair F.zero_constantCoeff (by simp) constantCoeff_X i
 
 @[simp]
 theorem Xzero_subst_Xzero (F : MvFormalGroup σ R) (i : σ) :

@@ -7,13 +7,16 @@ module
 
 public import MvFormalGroup.ForMathlib.MvPowerSeries.Substitution
 public import Mathlib.RingTheory.MvPowerSeries.Derivative
+public import Mathlib.RingTheory.PowerSeries.Derivative
+public import Mathlib.RingTheory.PowerSeries.Substitution
 
 /-!
 # The chain rule for multivariate power series
 
 For `a : σ → MvPowerSeries τ R` with zero constant coefficients and `f : MvPowerSeries σ R`,
 `MvPowerSeries.pderiv_subst` states the chain rule
-`∂ᵢ (f (a)) = ∑ s, (∂ₛ f) (a) * ∂ᵢ (a s)`.
+`∂ᵢ (f (a)) = ∑ s, (∂ₛ f) (a) * ∂ᵢ (a s)`. `PowerSeries.pderiv_subst` is the special case of a
+one-variable power series `f`: `∂ᵢ (f (a)) = f' (a) * ∂ᵢ a`.
 
 The proof first treats polynomials, by induction, and then reduces to them: below a given total
 degree, the coefficients of `f.subst a` only depend on a truncation of `f`.
@@ -84,5 +87,14 @@ theorem pderiv_subst [Fintype σ] [Finite τ] {a : σ → MvPowerSeries τ R}
         congr 4
         refine truncTotal_eq_iff.mpr fun e he ↦ ?_
         rw [coeff_pderiv, coeff_pderiv, hp _ (by simp [map_add]; omega)]
+
+open scoped PowerSeries in
+/-- **Chain rule** for substituting a multivariate power series without constant term into a
+one-variable power series: `∂ᵢ (f (a)) = f' (a) * ∂ᵢ a`. -/
+theorem _root_.PowerSeries.pderiv_subst [Finite τ] {a : MvPowerSeries τ R}
+    (ha : constantCoeff a = 0) (f : PowerSeries R) (i : τ) :
+    pderiv i (f.subst a) = (d⁄dX f).subst a * pderiv i a := by
+  rw [PowerSeries.subst, MvPowerSeries.pderiv_subst (fun _ ↦ ha), Fintype.sum_unique]
+  rfl
 
 end MvPowerSeries
