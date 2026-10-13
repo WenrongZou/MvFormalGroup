@@ -96,7 +96,7 @@ theorem hasSubst_inv : HasSubst F.inv :=
 /-- The inverse is a left inverse: `F(i(X), X) = 0`. -/
 @[simp]
 theorem inv_left (i : σ) : (F.toPowerSeries i).subst (uncurry ![F.inv, X]) = 0 := by
-  rw [← F.subst_toSumPowerSeries F.hasSubst_inv .X_self]
+  rw [← F.subst_toSumPowerSeries F.hasSubst_inv .X]
   exact subst_implicitFunctionLeftCofinite F.constantCoeff_toSumPowerSeries
     F.hasSubst_toSumPowerSeries F.isCofiniteInverse_one i
 
@@ -105,23 +105,23 @@ theorem eq_inv (a : σ → MvPowerSeries σ R) (ha : HasSubst a)
     (ha0 : ∀ i, constantCoeff (a i) = 0)
     (h : ∀ i, (F.toPowerSeries i).subst (uncurry ![a, X]) = 0) : a = F.inv :=
   eq_implicitFunctionLeftCofinite F.constantCoeff_toSumPowerSeries F.hasSubst_toSumPowerSeries
-    F.isCofiniteInverse_one a ha ha0 fun i ↦ (F.subst_toSumPowerSeries ha .X_self i).trans (h i)
+    F.isCofiniteInverse_one a ha ha0 fun i ↦ (F.subst_toSumPowerSeries ha .X i).trans (h i)
 
 /-- The left inverse equation after any admissible substitution: `F(i(a), a) = 0`. -/
 @[simp]
 theorem inv_left_subst {τ : Type*} {a : σ → MvPowerSeries τ R} (ha : HasSubst a) (i : σ) :
     (F.toPowerSeries i).subst (uncurry ![fun j ↦ (F.inv j).subst a, a]) = 0 := by
   have h := congrArg (subst a) (F.inv_left i)
-  rw [subst_pair_subst _ _ _ (F.hasSubst_inv.pair .X_self) ha] at h
+  rw [subst_pair_subst _ _ _ (F.hasSubst_inv.pair .X) ha] at h
   simpa only [subst_X ha, ← substAlgHom_apply ha, map_zero] using h
 
 /-- Applying the inverse twice gives the identity: `i(i(X)) = X`. -/
 @[simp]
 theorem inv_subst_inv (i : σ) : (F.inv i).subst F.inv = X i := by
   have hj : HasSubst fun k ↦ (F.inv k).subst F.inv := F.hasSubst_inv.subst F.hasSubst_inv
-  have h := F.assoc_subst hj F.hasSubst_inv .X_self i
+  have h := F.assoc_subst hj F.hasSubst_inv .X i
   simp only [F.inv_left_subst F.hasSubst_inv, F.inv_left, ← Pi.zero_def] at h
-  rw [F.zero_add .X_self, F.add_zero hj] at h
+  rw [F.zero_add .X, F.add_zero hj] at h
   exact h.symm
 
 /-- The inverse is also a right inverse: `F(X, i(X)) = 0`. -/
@@ -134,9 +134,9 @@ end Inverse
 /-- The inverse of the additive formal group law is coordinatewise negation. -/
 @[simp]
 theorem inv_additive (i : σ) : (additive σ R).inv i = -X i := by
-  refine (congrFun ((additive σ R).eq_inv (-X) HasSubst.X_self.neg (by simp) fun j ↦ ?_) i).symm
+  refine (congrFun ((additive σ R).eq_inv (-X) HasSubst.X.neg (by simp) fun j ↦ ?_) i).symm
   change (X (0, j) + X (1, j) : MvPowerSeries (Fin 2 × σ) R).subst _ = 0
-  simp [subst_add (HasSubst.X_self.neg.pair .X_self),
-    subst_X (HasSubst.X_self.neg.pair .X_self)]
+  simp [subst_add (HasSubst.X.neg.pair .X),
+    subst_X (HasSubst.X.neg.pair .X)]
 
 end MvFormalGroup

@@ -6,6 +6,8 @@ Authors: Wenrong Zou
 module
 
 public import MvFormalGroup.ForMathlib.Matrix.ColumnFinite
+public import MvFormalGroup.ForMathlib.Matrix.Mul
+public import MvFormalGroup.ForMathlib.MvPowerSeries.Substitution
 public import Mathlib.Data.Finsupp.Multiset
 public import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 public import Mathlib.RingTheory.MvPowerSeries.Order
@@ -33,7 +35,8 @@ Three extra conditions are needed.
 
 The proof replaces `F` by `K F`, whose Jacobian is `1`, and takes the coefficientwise limit of
 the iterates of `a ↦ a - (K F)(X, a)`. The matrix `K` acts on a family of power series
-coefficientwise (`MvPowerSeries.finsumMulVec`); each coefficient is a finite sum. Agreement
+coefficientwise (`MvPowerSeries.finsumMulVec`, built from `Matrix.finsumMulVec`); each
+coefficient is a finite sum. Agreement
 below degree `n` is expressed as `n ≤ (f - g).order`, since `truncTotal` needs finitely many
 variables.
 
@@ -65,22 +68,15 @@ variable {R : Type*} [CommRing R] {ι σ τ υ : Type*}
 /-- Substitution preserves substitutability; `HasSubst.comp` stated with `subst`. -/
 theorem HasSubst.subst {a : σ → MvPowerSeries τ R} {b : τ → MvPowerSeries υ R}
     (ha : HasSubst a) (hb : HasSubst b) : HasSubst (fun s ↦ (a s).subst b) := by
-  simpa only [coe_substAlgHom] using ha.comp hb
-
-/-- `HasSubst.X`, stated for the family `X` itself. -/
-theorem HasSubst.X_self : HasSubst (X : σ → MvPowerSeries σ R) := HasSubst.X
-
-/-- `HasSubst.zero`, stated for the family `0` itself. -/
-theorem HasSubst.zero' : HasSubst (0 : σ → MvPowerSeries τ R) := HasSubst.zero
+  convert ha.comp hb
+  exact (substAlgHom_apply _ _).symm
 
 theorem HasSubst.sub {a b : σ → MvPowerSeries τ R} (ha : HasSubst a) (hb : HasSubst b) :
-    HasSubst (a - b) := by
-  have : a - b ∈ (hasSubstIdeal : Ideal (σ → MvPowerSeries τ R)) := sub_mem ha hb
-  exact this
+    HasSubst (a - b) :=
+  (sub_mem ha hb : a - b ∈ hasSubstIdeal)
 
-theorem HasSubst.neg {a : σ → MvPowerSeries τ R} (ha : HasSubst a) : HasSubst (-a) := by
-  have : -a ∈ (hasSubstIdeal : Ideal (σ → MvPowerSeries τ R)) := neg_mem ha
-  exact this
+theorem HasSubst.neg {a : σ → MvPowerSeries τ R} (ha : HasSubst a) : HasSubst (-a) :=
+  (neg_mem ha : -a ∈ hasSubstIdeal)
 
 /-! ### Agreement below a given degree
 
@@ -196,8 +192,10 @@ include hT0 in
 private theorem iterate_admissible (n : ℕ) :
     HasSubst ((T^[n]) 0) ∧ ∀ i, constantCoeff ((T^[n]) 0 i) = 0 := by
   induction n with
-  | zero => exact ⟨HasSubst.zero, fun _ ↦ by simp⟩
-  | succ n ih => rw [iterate_succ_apply']; exact hT0 _ ih.1 ih.2
+  | zero => simp [hasSubst_def]
+  | succ n ih =>
+    rw [iterate_succ_apply']
+    exact hT0 _ ih.1 ih.2
 
 include hT0 hT in
 private theorem le_order_iterate_sub (m k : ℕ) (i : ι) :
@@ -255,26 +253,18 @@ private theorem eq_iterLimit (b : ι → MvPowerSeries τ R) (hb : HasSubst b)
 
 end FixedPoint
 
-/-- Two substitutable families on disjoint index sets combine to a substitutable family. -/
-theorem HasSubst.sumElim {a : σ → MvPowerSeries υ R} {b : τ → MvPowerSeries υ R}
-    (ha : HasSubst a) (hb : HasSubst b) : HasSubst (Sum.elim a b) where
-  const_coeff := by
-    rintro (s | t)
-    exacts [ha.const_coeff s, hb.const_coeff t]
-  coeff_zero d := by
-    refine (((ha.coeff_zero d).image Sum.inl).union ((hb.coeff_zero d).image Sum.inr)).subset ?_
-    rintro (s | t) h
-    · exact Or.inl ⟨s, h, rfl⟩
-    · exact Or.inr ⟨t, h, rfl⟩
-
 /-! ### Column-finite matrices acting on families of power series -/
 
 section CofiniteMatrix
 
-/-- A matrix acting coefficientwise on a family of power series, `(K v)ᵢ = ∑ⱼ Kᵢⱼ vⱼ`.
-When each monomial occurs in only finitely many `vⱼ`, every coefficient is a finite sum. -/
+/-- A matrix acting coefficientwise on a family of power series, `(K v)ᵢ = ∑ⱼ Kᵢⱼ vⱼ`: the
+coefficient of `d` is `Matrix.finsumMulVec` applied to the coefficients of `d`. When each
+monomial occurs in only finitely many `vⱼ`, every coefficient is a finite sum.
+
+This is not `Matrix.finsumMulVec` with power series entries: a `finsum` of power series is `0`
+as soon as infinitely many terms are nonzero, even if each coefficient is a finite sum. -/
 def finsumMulVec (K : Matrix τ ι R) (v : ι → MvPowerSeries σ R) : τ → MvPowerSeries σ R :=
-  fun i d ↦ ∑ᶠ j, K i j * coeff d (v j)
+  fun i d ↦ K.finsumMulVec (fun j ↦ coeff d (v j)) i
 
 theorem coeff_finsumMulVec (K : Matrix τ ι R) (v : ι → MvPowerSeries σ R) (i : τ)
     (d : σ →₀ ℕ) : coeff d (finsumMulVec K v i) = ∑ᶠ j, K i j * coeff d (v j) :=
@@ -297,12 +287,7 @@ theorem hasSubst_finsumMulVec {K : Matrix τ ι R} (hK : ∀ j, {i | K i j ≠ 0
     {v : ι → MvPowerSeries σ R} (hv : HasSubst v) (hv0 : ∀ j, constantCoeff (v j) = 0) :
     HasSubst (finsumMulVec K v) where
   const_coeff i := by simp [constantCoeff_finsumMulVec K hv0 i]
-  coeff_zero d := by
-    refine ((hv.coeff_zero d).biUnion fun j _ ↦ hK j).subset fun i hi ↦ ?_
-    obtain ⟨j, hj⟩ : ∃ j, K i j * coeff d (v j) ≠ 0 := by
-      by_contra! h
-      exact hi (finsum_eq_zero_of_forall_eq_zero h)
-    exact Set.mem_biUnion (right_ne_zero_of_mul hj) (left_ne_zero_of_mul hj)
+  coeff_zero d := Matrix.finite_support_finsumMulVec hK (hv.coeff_zero d)
 
 /-- Substitution commutes with the coefficientwise action of a matrix. -/
 theorem subst_finsumMulVec (K : Matrix τ ι R) {v : ι → MvPowerSeries σ R} (hv : HasSubst v)
@@ -350,14 +335,11 @@ theorem eq_zero_of_finsumMulVec_eq_zero [DecidableEq ι] {K : Matrix τ ι R} {J
   ext d
   let Ks := (hv d).toFinset
   let Js := Ks.biUnion fun k ↦ (hK k).toFinset
-  have hKs : ∀ k ∉ Ks, coeff d (v k) = 0 := fun k hk ↦ by simpa [Ks] using hk
-  have hJs : ∀ k ∈ Ks, ∀ j ∉ Js, K j k = 0 := fun k hk j hj ↦ by
-    by_contra hne
-    exact hj (Finset.mem_biUnion.mpr ⟨k, hk, (Set.Finite.mem_toFinset _).mpr hne⟩)
-  have hK0 : ∀ j, ∑ k ∈ Ks, K j k * coeff d (v k) = 0 := fun j ↦ by
-    have := congrArg (coeff d) (congrFun h j)
-    rwa [coeff_finsumMulVec, finsum_eq_sum_of_support_subset _ (s := Ks)
-      (Function.support_subset_iff'.mpr fun k hk ↦ by simp [hKs k hk])] at this
+  have hKs : ∀ k ∉ Ks, coeff d (v k) = 0 := by simp [Ks]
+  have hJs : ∀ k ∈ Ks, ∀ j ∉ Js, K j k = 0 := by simp +contextual [Ks, Js]
+  have hK0 (j : τ) : ∑ k ∈ Ks, K j k * coeff d (v k) = 0 := by
+    rw [← finsum_eq_sum_of_support_subset, ← coeff_finsumMulVec, h, Pi.zero_apply, coeff_zero]
+    simp +contextual [Function.support_subset_iff'.mpr , hKs]
   have hi : coeff d (v i) = ∑ k ∈ Ks, (∑ j ∈ Js, J i j * K j k) * coeff d (v k) := by
     rw [Finset.sum_congr rfl fun k hk ↦ by
       rw [← finsum_eq_sum_of_support_subset _ (Function.support_subset_iff'.mpr fun j hj ↦ by
@@ -426,7 +408,7 @@ private theorem implicitStep_admissible (hF0 : ∀ i, constantCoeff (F i) = 0)
     (ha : HasSubst a) (ha0 : ∀ i, constantCoeff (a i) = 0) :
     HasSubst (fun i ↦ a i - (finsumMulVec K F i).subst (Sum.elim X a)) ∧
       ∀ i, constantCoeff (a i - (finsumMulVec K F i).subst (Sum.elim X a)) = 0 := by
-  have hp := HasSubst.X_self.sumElim ha
+  have hp := HasSubst.X.sumElim ha
   refine ⟨ha.sub ((hasSubst_finsumMulVec hK hF hF0).subst hp), fun i ↦ ?_⟩
   rw [map_sub, ha0, constantCoeff_subst_eq_zero hp (by rintro (s | t) <;> simp [ha0])
     (constantCoeff_finsumMulVec K hF0 i), sub_zero]
@@ -440,8 +422,8 @@ private theorem implicitStep_contract
     ((n + 1 : ℕ) : ℕ∞) ≤ ((a i - (finsumMulVec K F i).subst (Sum.elim X a)) -
       (b i - (finsumMulVec K F i).subst (Sum.elim X b))).order := by
   classical
-  have hpa := HasSubst.X_self.sumElim ha
-  have hpb := HasSubst.X_self.sumElim hb
+  have hpa := HasSubst.X.sumElim ha
+  have hpb := HasSubst.X.sumElim hb
   have key := succ_le_order_subst_sub (n := n) (f := X (Sum.inr i) - finsumMulVec K F i) hpa hpb
     (by rintro (s | k) <;> simp [ha0]) (by rintro (s | k) <;> simp [hb0])
     (by rintro (s | k) <;> simp [h]) (by
@@ -475,8 +457,7 @@ include hF0 hF hK in
 @[simp]
 theorem subst_implicitFunctionCofinite (i : ι) :
     (F i).subst (Sum.elim X (implicitFunctionCofinite F K)) = 0 := by
-  have hα := hasSubst_implicitFunctionCofinite hF0 hF hK
-  have hp := HasSubst.X_self.sumElim hα
+  have hp := HasSubst.X.sumElim <| hasSubst_implicitFunctionCofinite hF0 hF hK
   have hG (j : τ) : (finsumMulVec K F j).subst (Sum.elim X (implicitFunctionCofinite F K)) = 0 := by
     have h : implicitFunctionCofinite F K j -
         (finsumMulVec K F j).subst (Sum.elim X (implicitFunctionCofinite F K)) =
@@ -486,7 +467,7 @@ theorem subst_implicitFunctionCofinite (i : ι) :
     exact sub_eq_self.mp h
   have hv := hF.subst hp
   have h0 := eq_zero_of_finsumMulVec_eq_zero hK.col_finite hK.mul_right hv.coeff_zero
-    (funext fun j ↦ by rw [← subst_finsumMulVec K hF hp j, hG j]; rfl)
+    (funext fun j ↦ by simp [← subst_finsumMulVec K hF hp j, hG j])
   exact congrFun h0 i
 
 include hF0 hF hK in
@@ -494,7 +475,7 @@ include hF0 hF hK in
 theorem eq_implicitFunctionCofinite (a : τ → MvPowerSeries σ R) (ha : HasSubst a)
     (ha0 : ∀ i, constantCoeff (a i) = 0) (h : ∀ i, (F i).subst (Sum.elim X a) = 0) :
     a = implicitFunctionCofinite F K := by
-  have hp := HasSubst.X_self.sumElim ha
+  have hp := HasSubst.X.sumElim ha
   refine eq_iterLimit _ (fun _ ha ha0 ↦ implicitStep_admissible hF0 hF hK.col_finite ha ha0)
     (fun n _ _ ha ha0 hb hb0 h ↦ implicitStep_contract hK.mul_left n ha ha0 hb hb0 h) a ha ha0
     (funext fun i ↦ ?_)
@@ -529,7 +510,7 @@ private theorem hasSubst_rename_sumComm {F : ι → MvPowerSeries (τ ⊕ σ) R}
 private theorem subst_rename_sumComm_of_hasSubst (f : MvPowerSeries (τ ⊕ σ) R)
     {a : τ → MvPowerSeries σ R} (ha : HasSubst a) :
     (rename (Equiv.sumComm τ σ) f).subst (Sum.elim X a) = f.subst (Sum.elim a X) := by
-  have hs := HasSubst.X_self.sumElim ha
+  have hs := HasSubst.X.sumElim ha
   rw [rename_eq_subst, subst_comp_subst_apply (HasSubst.X_comp _) hs]
   congr 1
   ext (j | j) : 1 <;> simp [subst_X hs]
@@ -626,7 +607,7 @@ theorem constantCoeff_implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R)
 theorem hasSubst_implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R)
     (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobian F)) :
     HasSubst (Sum.elim X (implicitFunction F hF hJ)) :=
-  HasSubst.X_self.sumElim
+  HasSubst.X.sumElim
     (hasSubst_implicitFunctionCofinite hF (hasSubst_of_constantCoeff_zero hF) (.of_isUnit hJ))
 
 /-- The implicit function solves the original system of equations. -/
@@ -683,7 +664,7 @@ theorem hasSubst_implicitFunctionLeft (F : τ → MvPowerSeries (τ ⊕ σ) R)
     (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobianLeft F)) :
     HasSubst (Sum.elim (implicitFunctionLeft F hF hJ) X) :=
   (hasSubst_implicitFunctionLeftCofinite hF (hasSubst_of_constantCoeff_zero hF)
-    (.of_isUnit hJ)).sumElim HasSubst.X_self
+    (.of_isUnit hJ)).sumElim HasSubst.X
 
 /-- The left implicit function solves `F(α(X), X) = 0`. -/
 @[simp]

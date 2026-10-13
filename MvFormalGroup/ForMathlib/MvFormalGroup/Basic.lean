@@ -41,16 +41,12 @@ lemma hasSubst_pair [Finite σ] {x y : σ → MvPowerSeries τ R}
     HasSubst (Function.uncurry ![x, y]) :=
   hasSubst_of_constantCoeff_zero fun ⟨b, i⟩ => by fin_cases b <;> simp [hx, hy]
 
-@[simp]
-lemma constantCoeff_curry_X (i : τ) (j : σ) :
-    constantCoeff (Function.curry (X (R := R)) i j) = 0 := constantCoeff_X _
-
 lemma constantCoeff_subst_pair [Finite σ] {f : σ → MvPowerSeries (Fin 2 × σ) R}
     {x y : σ → MvPowerSeries τ R} (hf : ∀ i, constantCoeff (f i) = 0)
     (hx : ∀ i, constantCoeff (x i) = 0) (hy : ∀ i, constantCoeff (y i) = 0)
     (i : σ) : constantCoeff ((f i).subst (uncurry ![x, y])) = 0 := by
   apply constantCoeff_subst_eq_zero (hasSubst_pair hx hy) _ (hf i)
-  rintro ⟨b, j⟩
+  intro ⟨b, j⟩
   fin_cases b <;> simp [Function.uncurry, hx, hy]
 
 end MvFormalGroup
@@ -85,7 +81,7 @@ variable {R : Type*} [CommRing R] {σ : Type*} [DecidableEq σ]
 /-- (9.6.5) Commutativity is optional: `F(X, Y) = F(Y, X)`. -/
 class IsComm (F : MvFormalGroup σ R) : Prop where
   comm i :
-    F.toPowerSeries i = (F.toPowerSeries i).subst (uncurry ![curry X (1 : Fin 2), curry X 0])
+    F.toPowerSeries i = (F.toPowerSeries i).subst (uncurry ![curry X 1, curry X 0])
 
 section Basic
 
@@ -157,9 +153,10 @@ theorem two_le_order_subst_sub {τ : Type*} {x y : σ → MvPowerSeries τ R}
     (2 : ℕ∞) ≤ ((F.toPowerSeries i).subst (uncurry ![x, y]) - (x i + y i)).order := by
   have hp := hx.pair hy
   have hp0 : ∀ s, constantCoeff (uncurry ![x, y] s) = 0 := by
-    rintro ⟨b, j⟩; fin_cases b <;> simp [hx0, hy0]
-  have h := succ_le_order_subst_sub (n := 1)
-    (f := F.toPowerSeries i - (X (0, i) + X (1, i))) hp HasSubst.zero' hp0 (fun _ ↦ by simp)
+    intro ⟨b, j⟩
+    fin_cases b <;> simp [hx0, hy0]
+  have h := succ_le_order_subst_sub (n := 1) (b := 0)
+    (f := F.toPowerSeries i - (X (0, i) + X (1, i))) hp HasSubst.zero hp0 (fun _ ↦ by simp)
     (fun s ↦ by simpa using one_le_order_iff_constCoeff_eq_zero.mpr (hp0 s))
     (fun s _ ↦ by
       rw [map_sub, F.coeff_eq_of_degree_lt_two i (d := single s 1) (by simp), sub_self])
@@ -175,33 +172,33 @@ abbrev zeroX : σ → MvPowerSeries σ R := fun i ↦ (F.toPowerSeries i).subst 
 
 @[simp]
 theorem constantCoeff_Xzero (i : σ) : constantCoeff (F.Xzero i) = 0 :=
-  constantCoeff_subst_eq_zero (HasSubst.X_self.pair .zero')
+  constantCoeff_subst_eq_zero (HasSubst.X.pair .zero)
     (by rintro ⟨b, j⟩; fin_cases b <;> simp) (F.zero_constantCoeff i)
 
 @[simp]
 theorem constantCoeff_zeroX (i : σ) : constantCoeff (F.zeroX i) = 0 :=
-  constantCoeff_subst_eq_zero (HasSubst.zero'.pair .X_self)
+  constantCoeff_subst_eq_zero (HasSubst.zero.pair .X)
     (by rintro ⟨b, j⟩; fin_cases b <;> simp) (F.zero_constantCoeff i)
 
 @[simp]
 theorem Xzero_subst_Xzero (i : σ) : (F.Xzero i).subst F.Xzero = F.Xzero i := by
-  have hs : HasSubst F.Xzero := F.hasSubst_subst_pair .X_self .zero'
-  rw [Xzero, subst_pair_subst _ _ _ (HasSubst.X_self.pair .zero') hs]
+  have hs : HasSubst F.Xzero := F.hasSubst_subst_pair .X .zero
+  rw [Xzero, subst_pair_subst _ X 0 (HasSubst.X.pair .zero) hs]
   have h00 : uncurry ![(0 : σ → MvPowerSeries σ R), 0] = 0 := by
     funext ⟨b, j⟩; fin_cases b <;> rfl
   simpa only [h00, subst_zero_of_constantCoeff_zero (F.zero_constantCoeff _),
     Pi.zero_apply, ← substAlgHom_apply hs, map_zero, substAlgHom_X,
-    Xzero, ← Pi.zero_def] using F.assoc_subst .X_self .zero' .zero' i
+    Xzero, ← Pi.zero_def] using F.assoc_subst (x := X) (y := 0) (z := 0) .X .zero .zero i
 
 @[simp]
 theorem zeroX_subst_zeroX (i : σ) : (F.zeroX i).subst F.zeroX = F.zeroX i := by
-  have hs : HasSubst F.zeroX := F.hasSubst_subst_pair .zero' .X_self
-  rw [zeroX, subst_pair_subst _ _ _ (HasSubst.zero'.pair .X_self) hs]
+  have hs : HasSubst F.zeroX := F.hasSubst_subst_pair .zero .X
+  rw [zeroX, subst_pair_subst _ 0 X (HasSubst.zero.pair .X) hs]
   have h00 : uncurry ![(0 : σ → MvPowerSeries σ R), 0] = 0 := by
     funext ⟨b, j⟩; fin_cases b <;> rfl
   simpa only [h00, subst_zero_of_constantCoeff_zero (F.zero_constantCoeff _),
     Pi.zero_apply, ← substAlgHom_apply hs, map_zero, substAlgHom_X,
-    zeroX, ← Pi.zero_def] using (F.assoc_subst .zero' .zero' .X_self i).symm
+    zeroX, ← Pi.zero_def] using (F.assoc_subst (x := 0) (y := 0) (z := X) .zero .zero .X i).symm
 
 omit [DecidableEq σ] in
 /-- An idempotent family congruent to `X` modulo degree two is `X`. -/
@@ -216,7 +213,7 @@ private theorem eq_X_of_idempotent (g : σ → MvPowerSeries σ R) (hg : HasSubs
       have hf : ∀ s, g s ≠ X s → coeff (single s 1) (g i - X i) = 0 := fun s _ ↦ by
         have hs : (((single s 1 : σ →₀ ℕ).degree : ℕ) : ℕ∞) < 2 := by simp
         exact coeff_of_lt_order (hs.trans_le (hlin i))
-      have := succ_le_order_subst_sub hg HasSubst.X_self hg0 (fun s ↦ constantCoeff_X s) ih hf
+      have := succ_le_order_subst_sub (b := X) hg HasSubst.X hg0 (fun s ↦ constantCoeff_X s) ih hf
       rwa [subst_sub hg, hgg, subst_X hg, sub_self, subst_self, id_eq, zero_sub,
         order_neg] at this
   funext i
@@ -226,27 +223,27 @@ private theorem eq_X_of_idempotent (g : σ → MvPowerSeries σ R) (hg : HasSubs
 /-- Zero is a right identity: `F(X, 0) = X`. -/
 @[simp]
 theorem Xzero_eq_X (i : σ) : F.Xzero i = X i := by
-  refine congrFun (eq_X_of_idempotent F.Xzero (F.hasSubst_subst_pair .X_self .zero')
+  refine congrFun (eq_X_of_idempotent F.Xzero (F.hasSubst_subst_pair .X .zero)
     (fun j ↦ ?_) (fun j ↦ ?_) F.Xzero_subst_Xzero) i
-  · exact constantCoeff_subst_eq_zero (HasSubst.X_self.pair .zero')
-      (by rintro ⟨b, k⟩; fin_cases b <;> simp) (F.zero_constantCoeff j)
-  · simpa using F.two_le_order_subst_sub .X_self .zero' (fun k ↦ constantCoeff_X k) (by simp) j
+  · exact F.constantCoeff_Xzero j
+  · simpa using F.two_le_order_subst_sub (x := X) (y := 0) .X .zero
+      (fun k ↦ constantCoeff_X k) (by simp) j
 
 /-- Zero is a left identity: `F(0, X) = X`. -/
 @[simp]
 theorem zeroX_eq_X (i : σ) : F.zeroX i = X i := by
-  refine congrFun (eq_X_of_idempotent F.zeroX (F.hasSubst_subst_pair .zero' .X_self)
+  refine congrFun (eq_X_of_idempotent F.zeroX (F.hasSubst_subst_pair .zero .X)
     (fun j ↦ ?_) (fun j ↦ ?_) F.zeroX_subst_zeroX) i
-  · exact constantCoeff_subst_eq_zero (HasSubst.zero'.pair .X_self)
-      (by rintro ⟨b, k⟩; fin_cases b <;> simp) (F.zero_constantCoeff j)
-  · simpa using F.two_le_order_subst_sub .zero' .X_self (by simp) (fun k ↦ constantCoeff_X k) j
+  · exact F.constantCoeff_zeroX j
+  · simpa using F.two_le_order_subst_sub (x := 0) (y := X) .zero .X
+      (by simp) (fun k ↦ constantCoeff_X k) j
 
 /-- Zero is a right identity after any admissible substitution. -/
 @[simp]
 theorem add_zero {τ : Type*} {a : σ → MvPowerSeries τ R} (ha : HasSubst a) (i : σ) :
     (F.toPowerSeries i).subst (uncurry ![a, 0]) = a i := by
   have h := congrArg (subst a) (F.Xzero_eq_X i)
-  rw [Xzero, subst_pair_subst _ _ _ (HasSubst.X_self.pair .zero') ha] at h
+  rw [Xzero, subst_pair_subst _ X 0 (HasSubst.X.pair .zero) ha] at h
   simpa only [Pi.zero_apply, ← substAlgHom_apply ha, map_zero, substAlgHom_X,
     ← Pi.zero_def] using h
 
@@ -255,7 +252,7 @@ theorem add_zero {τ : Type*} {a : σ → MvPowerSeries τ R} (ha : HasSubst a) 
 theorem zero_add {τ : Type*} {a : σ → MvPowerSeries τ R} (ha : HasSubst a) (i : σ) :
     (F.toPowerSeries i).subst (uncurry ![0, a]) = a i := by
   have h := congrArg (subst a) (F.zeroX_eq_X i)
-  rw [zeroX, subst_pair_subst _ _ _ (HasSubst.zero'.pair .X_self) ha] at h
+  rw [zeroX, subst_pair_subst _ 0 X (HasSubst.zero.pair .X) ha] at h
   simpa only [Pi.zero_apply, ← substAlgHom_apply ha, map_zero, substAlgHom_X,
     ← Pi.zero_def] using h
 

@@ -12,9 +12,9 @@ public import Mathlib.Basic.Finite.Sum
 /-!
 # Substitutable families and total-degree estimates
 
-The family operations (`HasSubst.comp_injective`, `HasSubst.uncurry`, and `HasSubst.pair`)
-apply to arbitrary variable sets. The total-degree estimates below use `truncTotal`
-and are used in the finite-variable formal implicit function theorem.
+The family operations (`HasSubst.comp_injective`, `HasSubst.uncurry`, `HasSubst.pair`, and
+`HasSubst.sumElim`) apply to arbitrary variable sets. The total-degree estimates below use
+`truncTotal` and are used in the finite-variable formal implicit function theorem.
 -/
 
 @[expose] public section
@@ -50,6 +50,16 @@ theorem HasSubst.pair {x y : σ → MvPowerSeries τ R} (hx : HasSubst x) (hy : 
 /-- One block of variables is substitutable. -/
 theorem HasSubst.curry_X (b : ι) : HasSubst (Function.curry (X (R := R) (σ := ι × σ)) b) :=
   HasSubst.X.comp_injective (Prod.mk_right_injective b)
+
+/-- Two substitutable families on disjoint index sets combine to a substitutable family. -/
+theorem HasSubst.sumElim {a : σ → MvPowerSeries υ R} {b : τ → MvPowerSeries υ R}
+    (ha : HasSubst a) (hb : HasSubst b) : HasSubst (Sum.elim a b) where
+  const_coeff := by
+    rintro (s | t)
+    exacts [ha.const_coeff s, hb.const_coeff t]
+  coeff_zero d := by
+    refine (((ha.coeff_zero d).image Sum.inl).union ((hb.coeff_zero d).image Sum.inr)).subset ?_
+    rintro (s | t) h <;> simpa
 
 /-- Substitution into a pair of families commutes with a further admissible substitution. -/
 theorem subst_pair_subst (f : MvPowerSeries (Fin 2 × σ) R)
