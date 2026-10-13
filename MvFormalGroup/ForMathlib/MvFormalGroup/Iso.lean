@@ -25,8 +25,8 @@ namespace MvFormalGroup
 
 variable {R : Type*} [CommRing R]
 variable {σ τ υ ω : Type*}
-variable [Finite σ] [DecidableEq σ] [Finite τ] [DecidableEq τ]
-variable [Finite υ] [DecidableEq υ] [Finite ω] [DecidableEq ω]
+variable [DecidableEq σ] [DecidableEq τ]
+variable [DecidableEq υ] [DecidableEq ω]
 
 /-- An isomorphism of formal group laws is a pair of mutually inverse homomorphisms. -/
 structure Iso (F : MvFormalGroup σ R) (G : MvFormalGroup τ R) where

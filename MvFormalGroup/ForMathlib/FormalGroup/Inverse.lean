@@ -47,7 +47,8 @@ theorem inv_left (F : FormalGroup R) :
 theorem eq_inv (F : FormalGroup R) (a : PowerSeries R)
     (ha0 : PowerSeries.constantCoeff a = 0)
     (ha : F.toPowerSeries.subst ![a, PowerSeries.X] = 0) : a = F.inv :=
-  congrFun (MvFormalGroup.eq_inv F (fun _ ↦ a) (fun _ ↦ ha0) fun _ ↦
+  congrFun (MvFormalGroup.eq_inv F (fun _ ↦ a)
+    (PowerSeries.HasSubst.of_constantCoeff_zero' ha0).const (fun _ ↦ ha0) fun _ ↦
     (F.subst_toPowerSeries _ _ (.of_constantCoeff_zero' ha0) .X').symm.trans ha) ()
 
 /-- The left inverse equation after any admissible substitution. -/

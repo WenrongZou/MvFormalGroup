@@ -169,8 +169,7 @@ theorem assoc_subst {τ : Type*} (F : FormalGroup R) (x y z : MvPowerSeries τ R
   rw [subst_toPowerSeries F _ _ (hc x y hx hy) hzy,
     subst_toPowerSeries F _ _ hxy (hc y z hy hz),
     subst_toPowerSeries F x y hxy hyy, subst_toPowerSeries F y z hyy hzy]
-  exact MvFormalGroup.assoc_subst F (fun _ ↦ x) (fun _ ↦ y) (fun _ ↦ z)
-    (fun _ ↦ hx) (fun _ ↦ hy) (fun _ ↦ hz) ()
+  exact MvFormalGroup.assoc_subst F hxy.const hyy.const hzy.const ()
 
 /-- Zero is a right identity after any admissible substitution. -/
 @[simp]

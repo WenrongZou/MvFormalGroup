@@ -12,7 +12,8 @@ public import Mathlib.RingTheory.MvPowerSeries.Rename
 # Homomorphisms of multidimensional formal group laws
 
 A homomorphism `f : Hom F G` is a family of power series, indexed by the coordinates
-of `G`, in the variables of `F`. Its constant coefficients vanish and it satisfies
+of `G`, in the variables of `F`. Both index sets may be infinite. Each source monomial
+occurs in only finitely many coordinates, its constant coefficients vanish, and it satisfies
 `f(F(X, Y)) = G(f(X), f(Y))`. Source and target can have different dimensions.
 
 Composition `g.comp f` is substitution, representing `g ∘ f`. The identity is the
@@ -29,8 +30,8 @@ namespace MvFormalGroup
 
 variable {R : Type*} [CommRing R]
 variable {σ τ υ ω : Type*}
-variable [Finite σ] [DecidableEq σ] [Finite τ] [DecidableEq τ]
-variable [Finite υ] [DecidableEq υ] [Finite ω] [DecidableEq ω]
+variable [DecidableEq σ] [DecidableEq τ]
+variable [DecidableEq υ] [DecidableEq ω]
 
 /-- A homomorphism of formal group laws over the same coefficient ring. -/
 @[ext]
@@ -39,6 +40,8 @@ structure Hom (F : MvFormalGroup σ R) (G : MvFormalGroup τ R) where
   toPowerSeries : τ → MvPowerSeries σ R
   /-- A homomorphism takes the origin to the origin. -/
   zero_constantCoeff : ∀ i, constantCoeff (toPowerSeries i) = 0
+  /-- Each source monomial occurs in only finitely many target coordinates. -/
+  coeff_finite d : {i | coeff d (toPowerSeries i) ≠ 0}.Finite
   /-- Compatibility with the formal group laws. -/
   map_add i :
     (toPowerSeries i).subst F.toPowerSeries =
@@ -58,35 +61,34 @@ theorem ext_apply {f g : Hom F G} (h : ∀ i, f i = g i) : f = g :=
   Hom.ext (funext h)
 
 @[simp]
-theorem coe_mk (a h0 hadd) : ⇑(Hom.mk a h0 hadd : Hom F G) = a := rfl
+theorem coe_mk (a h0 hfinite hadd) : ⇑(Hom.mk a h0 hfinite hadd : Hom F G) = a := rfl
 
 @[simp]
 theorem constantCoeff_apply (f : Hom F G) (i : τ) : constantCoeff (f i) = 0 :=
   f.zero_constantCoeff i
 
 /-- The coordinate family of a homomorphism is admissible for substitution. -/
-theorem hasSubst (f : Hom F G) : HasSubst f.toPowerSeries :=
-  hasSubst_of_constantCoeff_zero f.zero_constantCoeff
+theorem hasSubst (f : Hom F G) : HasSubst f.toPowerSeries where
+  const_coeff i := by simp [f.zero_constantCoeff]
+  coeff_zero := f.coeff_finite
 
 private theorem hasSubst_blocks (f : Hom F G) :
     HasSubst (fun p : Fin 2 × τ ↦ (f p.2).subst (fun j ↦ X (R := R) (p.1, j))) :=
-  hasSubst_of_constantCoeff_zero (fun p ↦ constantCoeff_subst_eq_zero
-    (HasSubst.X_comp _) (fun j ↦ constantCoeff_X (p.1, j)) (f.zero_constantCoeff p.2))
+  HasSubst.uncurry (fun b ↦ f.hasSubst.subst (HasSubst.curry_X b))
 
 omit [DecidableEq σ] in
 private theorem subst_block {κ : Type*} (b : Fin 2) (f : MvPowerSeries σ R)
     {a : Fin 2 × σ → MvPowerSeries κ R} (ha : HasSubst a) :
     (f.subst (fun j ↦ X (R := R) (b, j))).subst a =
       f.subst (fun j ↦ a (b, j)) := by
-  have hb := hasSubst_of_constantCoeff_zero (fun j : σ ↦ constantCoeff_X (R := R) (b, j))
+  have hb : HasSubst (fun j : σ ↦ X (R := R) (b, j)) := .curry_X b
   rw [subst_comp_subst_apply hb ha]
   simp only [subst_X ha]
 
 omit [DecidableEq σ] in
 private theorem subst_X_block (b : Fin 2) (i : σ) :
     (X i : MvPowerSeries σ R).subst (fun j ↦ X (R := R) (b, j)) = X (b, i) :=
-  subst_X (hasSubst_of_constantCoeff_zero
-    (fun j : σ ↦ constantCoeff_X (R := R) (b, j))) i
+  subst_X (HasSubst.curry_X b) i
 
 /-- The homomorphism identity remains valid after any admissible substitution
 for the two blocks of source variables. -/
@@ -96,7 +98,7 @@ theorem map_add_subst (f : Hom F G) {κ : Type*}
       (G.toPowerSeries i).subst
         (fun p : Fin 2 × τ ↦ (f p.2).subst (fun j ↦ a (p.1, j))) := by
   have h := congrArg (subst a) (f.map_add i)
-  rw [subst_comp_subst_apply (hasSubst_of_constantCoeff_zero F.zero_constantCoeff) ha,
+  rw [subst_comp_subst_apply F.hasSubst ha,
     subst_comp_subst_apply f.hasSubst_blocks ha] at h
   simpa only [subst_block _ _ ha] using h
 
@@ -104,8 +106,9 @@ theorem map_add_subst (f : Hom F G) {κ : Type*}
 def id (F : MvFormalGroup σ R) : Hom F F where
   toPowerSeries := X
   zero_constantCoeff := constantCoeff_X
+  coeff_finite := HasSubst.X_self.coeff_zero
   map_add i := by
-    rw [subst_X (hasSubst_of_constantCoeff_zero F.zero_constantCoeff)]
+    rw [subst_X F.hasSubst]
     simp only [subst_X_block]
     exact (congrFun subst_self (F.toPowerSeries i)).symm
 
@@ -117,15 +120,14 @@ def comp (g : Hom G H) (f : Hom F G) : Hom F H where
   toPowerSeries i := (g i).subst f.toPowerSeries
   zero_constantCoeff i :=
     constantCoeff_subst_eq_zero f.hasSubst f.zero_constantCoeff (g.zero_constantCoeff i)
+  coeff_finite := (g.hasSubst.subst f.hasSubst).coeff_zero
   map_add i := by
-    rw [subst_comp_subst_apply f.hasSubst
-      (hasSubst_of_constantCoeff_zero F.zero_constantCoeff)]
+    rw [subst_comp_subst_apply f.hasSubst F.hasSubst]
     simp only [f.map_add]
     rw [g.map_add_subst f.hasSubst_blocks]
     congr 1
     funext p
-    have hb := hasSubst_of_constantCoeff_zero
-      (fun j : σ ↦ constantCoeff_X (R := R) (p.1, j))
+    have hb := HasSubst.curry_X (R := R) (σ := σ) p.1
     exact (subst_comp_subst_apply f.hasSubst hb (g p.2)).symm
 
 @[simp]
@@ -155,12 +157,13 @@ instance : Zero (Hom F G) where
   zero :=
     { toPowerSeries := 0
       zero_constantCoeff := by simp
+      coeff_finite := HasSubst.zero'.coeff_zero
       map_add i := by
-        have hF := hasSubst_of_constantCoeff_zero F.zero_constantCoeff
+        have hF := F.hasSubst
         have hz (b : Fin 2) :
             (0 : MvPowerSeries σ R).subst (fun j ↦ X (R := R) (b, j)) = 0 := by
-          rw [← substAlgHom_apply (hasSubst_of_constantCoeff_zero
-            (fun j : σ ↦ constantCoeff_X (R := R) (b, j))), map_zero]
+          have hb : HasSubst (fun j : σ ↦ X (R := R) (b, j)) := .curry_X b
+          rw [← substAlgHom_apply hb, map_zero]
         simp only [Pi.zero_apply, hz]
         rw [← substAlgHom_apply hF, map_zero, ← Pi.zero_def,
           subst_zero_of_constantCoeff_zero (G.zero_constantCoeff i)] }

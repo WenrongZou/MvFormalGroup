@@ -3,7 +3,6 @@ import MvFormalGroup.ForMathlib.MvFormalGroup.Basic
 import MvFormalGroup.ForMathlib.MvFormalGroup.Hom
 import MvFormalGroup.ForMathlib.MvFormalGroup.Iso
 import MvFormalGroup.ForMathlib.MvFormalGroup.Inverse
-import MvFormalGroup.ForMathlib.MvFormalGroup.InfiniteDimensional
 import MvFormalGroup.ForMathlib.MvPowerSeries.Derivative
 import MvFormalGroup.ForMathlib.MvPowerSeries.Implicit
 import MvFormalGroup.ForMathlib.MvPowerSeries.ImplicitInfinite

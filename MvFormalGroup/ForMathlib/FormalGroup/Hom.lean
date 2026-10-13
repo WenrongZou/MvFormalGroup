@@ -94,6 +94,7 @@ def mk' (f : PowerSeries R) (hf : PowerSeries.constantCoeff f = 0)
         f.subst (X 1 : MvPowerSeries (Fin 2) R)]) : Hom F G where
   toPowerSeries _ := f
   zero_constantCoeff _ := hf
+  coeff_finite _ := Set.toFinite _
   map_add _ := by
     -- substitute `X i ↦ X (i, ())` into `hadd`
     set b : Fin 2 → MvPowerSeries (Fin 2 × Unit) R := fun i ↦ X (i, ())

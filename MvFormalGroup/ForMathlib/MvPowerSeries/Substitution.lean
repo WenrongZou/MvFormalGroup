@@ -10,10 +10,11 @@ public import Mathlib.Data.Finsupp.Multiset
 public import Mathlib.Basic.Finite.Sum
 
 /-!
-# Total-degree estimates for substitution
+# Substitutable families and total-degree estimates
 
-These estimates express agreement of power series using `truncTotal` and are used
-in the formal implicit function theorem and in the construction of formal group inverses.
+The family operations (`HasSubst.comp_injective`, `HasSubst.uncurry`, and `HasSubst.pair`)
+apply to arbitrary variable sets. The total-degree estimates below use `truncTotal`
+and are used in the finite-variable formal implicit function theorem.
 -/
 
 @[expose] public section
@@ -24,7 +25,44 @@ open Finsupp Function
 
 namespace MvPowerSeries
 
-variable {R : Type*} [CommRing R] {σ τ : Type*} [Finite τ]
+variable {R : Type*} [CommRing R] {ι σ τ υ : Type*}
+
+/-- Reindexing a substitutable family along an injective map keeps it substitutable. -/
+theorem HasSubst.comp_injective {a : σ → MvPowerSeries τ R} (ha : HasSubst a)
+    {f : ι → σ} (hf : Injective f) : HasSubst (a ∘ f) where
+  const_coeff i := ha.const_coeff (f i)
+  coeff_zero d := (ha.coeff_zero d).preimage hf.injOn
+
+/-- Stacking finitely many substitutable families gives a substitutable family. -/
+theorem HasSubst.uncurry [Finite ι] {a : ι → σ → MvPowerSeries τ R}
+    (ha : ∀ k, HasSubst (a k)) : HasSubst (Function.uncurry a) where
+  const_coeff p := (ha p.1).const_coeff p.2
+  coeff_zero d := by
+    refine (Set.finite_iUnion fun k ↦ ((ha k).coeff_zero d).image (Prod.mk k)).subset ?_
+    rintro ⟨k, s⟩ h
+    exact Set.mem_iUnion.mpr ⟨k, s, h, rfl⟩
+
+/-- A pair of substitutable families is substitutable. -/
+theorem HasSubst.pair {x y : σ → MvPowerSeries τ R} (hx : HasSubst x) (hy : HasSubst y) :
+    HasSubst (Function.uncurry ![x, y]) :=
+  HasSubst.uncurry fun b ↦ by fin_cases b <;> assumption
+
+/-- One block of variables is substitutable. -/
+theorem HasSubst.curry_X (b : ι) : HasSubst (Function.curry (X (R := R) (σ := ι × σ)) b) :=
+  HasSubst.X.comp_injective (Prod.mk_right_injective b)
+
+/-- Substitution into a pair of families commutes with a further admissible substitution. -/
+theorem subst_pair_subst (f : MvPowerSeries (Fin 2 × σ) R)
+    (x y : σ → MvPowerSeries τ R) {a : τ → MvPowerSeries υ R}
+    (hxy : HasSubst (uncurry ![x, y])) (ha : HasSubst a) :
+    (f.subst (uncurry ![x, y])).subst a =
+      f.subst (uncurry ![fun i ↦ (x i).subst a, fun i ↦ (y i).subst a]) := by
+  rw [subst_comp_subst_apply hxy ha]
+  congr 1
+  funext ⟨b, i⟩
+  fin_cases b <;> rfl
+
+variable [Finite τ]
 
 /-- Equality of total truncations is equality of all coefficients below the cutoff. -/
 theorem truncTotal_eq_iff {n : ℕ} {f g : MvPowerSeries τ R} :
