@@ -106,7 +106,7 @@ theorem map_add_subst (f : Hom F G) {κ : Type*}
 def id (F : MvFormalGroup σ R) : Hom F F where
   toPowerSeries := X
   zero_constantCoeff := constantCoeff_X
-  coeff_finite := HasSubst.X_self.coeff_zero
+  coeff_finite := HasSubst.X.coeff_zero
   map_add i := by
     rw [subst_X F.hasSubst]
     simp only [subst_X_block]
@@ -157,7 +157,7 @@ instance : Zero (Hom F G) where
   zero :=
     { toPowerSeries := 0
       zero_constantCoeff := by simp
-      coeff_finite := HasSubst.zero'.coeff_zero
+      coeff_finite := HasSubst.zero.coeff_zero
       map_add i := by
         have hF := F.hasSubst
         have hz (b : Fin 2) :
