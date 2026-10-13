@@ -5,21 +5,30 @@ Authors: Wenrong Zou
 -/
 module
 
-public import MvFormalGroup.ForMathlib.MvPowerSeries.Implicit
+public import MvFormalGroup.ForMathlib.Matrix.ColumnFinite
+public import Mathlib.Data.Finsupp.Multiset
+public import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
+public import Mathlib.RingTheory.MvPowerSeries.Order
+public import Mathlib.RingTheory.MvPowerSeries.Rename
+public import Mathlib.RingTheory.MvPowerSeries.Substitution
 
 /-!
 # The formal implicit function theorem for infinitely many equations
 
-`MvPowerSeries.existsUnique_implicitFunction` solves `F(X, Y) = 0` for finitely many
-equations and finitely many variables. Here both index sets `σ` (the variables `X`) and `τ`
-(the equations, and the unknowns `Y`) may be infinite. Three extra conditions are needed.
+The classical formal implicit function theorem (see also `Implicit.lean`) solves
+`F(X, Y) = 0` for finitely many equations and finitely many variables. Here the variables `X`
+are indexed by `σ`, the equations `Fⱼ` by `ι`, and the unknowns `Y` by `τ`; all three may be
+infinite, and `ι`, `τ` need not be the same type. The Jacobian `J` is then an `ι × τ` matrix.
+Three extra conditions are needed.
 
-* `HasSubst F`: every monomial occurs in only finitely many `Fᵢ`. This is the analogue of
+* `HasSubst F`: every monomial occurs in only finitely many `Fⱼ`. This is the analogue of
   Hazewinkel's (9.6.3), and makes the Jacobian `J` column-finite.
-* `IsCofiniteInverse K J`: the Jacobian has a two-sided inverse `K` among column-finite
-  matrices. For infinite `τ`, a one-sided inverse is not enough: a shift has a one-sided
-  inverse, and then existence or uniqueness fails. For finite `τ`, this is `IsUnit J`
-  (`IsCofiniteInverse.of_isUnit`).
+* `Matrix.IsCofiniteInverse K J`: the Jacobian has a two-sided inverse `K`, a column-finite
+  `τ × ι` matrix with `K J = 1` and `J K = 1`. Equivalently, `J` induces an isomorphism of free
+  modules `R^(τ) ≅ R^(ι)`; so if `R` is nontrivial, `ι` and `τ` have the same cardinality. For
+  infinite index sets a one-sided inverse is not enough: a shift has a one-sided inverse, and
+  then existence or uniqueness fails. For a finite square system, this is `IsUnit J`
+  (`Matrix.IsCofiniteInverse.of_isUnit`).
 * The solution `α` itself satisfies `HasSubst α`, which is needed to substitute it.
 
 The proof replaces `F` by `K F`, whose Jacobian is `1`, and takes the coefficientwise limit of
@@ -34,8 +43,13 @@ variables.
 * `MvPowerSeries.existsUnique_implicitFunctionCofinite`: the implicit function theorem.
 * `MvPowerSeries.existsUnique_implicitFunctionLeftCofinite`: the version solving for the
   first variable block.
-* `MvPowerSeries.implicitFunctionCofinite_eq_implicitFunction`: for finitely many equations and
-  variables, the solution agrees with `MvPowerSeries.implicitFunction`.
+* `MvPowerSeries.Cofinite.existsUnique_implicitFunction`,
+  `MvPowerSeries.Cofinite.existsUnique_implicitFunctionLeft`: the classical theorem for finitely
+  many equations, deduced from the above, with the same statements as in `Implicit.lean`.
+
+This file does not import `Implicit.lean`. The Jacobians and the finite-index statements are
+therefore stated in the namespace `MvPowerSeries.Cofinite`, so that both files can be imported
+together.
 -/
 
 @[expose] public section
@@ -259,28 +273,28 @@ section CofiniteMatrix
 
 /-- A matrix acting coefficientwise on a family of power series, `(K v)ᵢ = ∑ⱼ Kᵢⱼ vⱼ`.
 When each monomial occurs in only finitely many `vⱼ`, every coefficient is a finite sum. -/
-def finsumMulVec (K : Matrix τ τ R) (v : τ → MvPowerSeries σ R) : τ → MvPowerSeries σ R :=
+def finsumMulVec (K : Matrix τ ι R) (v : ι → MvPowerSeries σ R) : τ → MvPowerSeries σ R :=
   fun i d ↦ ∑ᶠ j, K i j * coeff d (v j)
 
-theorem coeff_finsumMulVec (K : Matrix τ τ R) (v : τ → MvPowerSeries σ R) (i : τ)
+theorem coeff_finsumMulVec (K : Matrix τ ι R) (v : ι → MvPowerSeries σ R) (i : τ)
     (d : σ →₀ ℕ) : coeff d (finsumMulVec K v i) = ∑ᶠ j, K i j * coeff d (v j) :=
   rfl
 
-theorem constantCoeff_finsumMulVec (K : Matrix τ τ R) {v : τ → MvPowerSeries σ R}
+theorem constantCoeff_finsumMulVec (K : Matrix τ ι R) {v : ι → MvPowerSeries σ R}
     (hv : ∀ j, constantCoeff (v j) = 0) (i : τ) : constantCoeff (finsumMulVec K v i) = 0 := by
   rw [← coeff_zero_eq_constantCoeff_apply, coeff_finsumMulVec]
   simp [coeff_zero_eq_constantCoeff_apply, hv]
 
 @[simp]
-theorem finsumMulVec_zero (K : Matrix τ τ R) :
-    finsumMulVec K (0 : τ → MvPowerSeries σ R) = 0 := by
+theorem finsumMulVec_zero (K : Matrix τ ι R) :
+    finsumMulVec K (0 : ι → MvPowerSeries σ R) = 0 := by
   funext i
   ext d
   simp [coeff_finsumMulVec]
 
 /-- A column-finite matrix preserves the cofinite condition. -/
-theorem hasSubst_finsumMulVec {K : Matrix τ τ R} (hK : ∀ j, {i | K i j ≠ 0}.Finite)
-    {v : τ → MvPowerSeries σ R} (hv : HasSubst v) (hv0 : ∀ j, constantCoeff (v j) = 0) :
+theorem hasSubst_finsumMulVec {K : Matrix τ ι R} (hK : ∀ j, {i | K i j ≠ 0}.Finite)
+    {v : ι → MvPowerSeries σ R} (hv : HasSubst v) (hv0 : ∀ j, constantCoeff (v j) = 0) :
     HasSubst (finsumMulVec K v) where
   const_coeff i := by simp [constantCoeff_finsumMulVec K hv0 i]
   coeff_zero d := by
@@ -291,7 +305,7 @@ theorem hasSubst_finsumMulVec {K : Matrix τ τ R} (hK : ∀ j, {i | K i j ≠ 0
     exact Set.mem_biUnion (right_ne_zero_of_mul hj) (left_ne_zero_of_mul hj)
 
 /-- Substitution commutes with the coefficientwise action of a matrix. -/
-theorem subst_finsumMulVec (K : Matrix τ τ R) {v : τ → MvPowerSeries σ R} (hv : HasSubst v)
+theorem subst_finsumMulVec (K : Matrix τ ι R) {v : ι → MvPowerSeries σ R} (hv : HasSubst v)
     {a : σ → MvPowerSeries υ R} (ha : HasSubst a) (i : τ) :
     (finsumMulVec K v i).subst a = finsumMulVec K (fun j ↦ (v j).subst a) i := by
   classical
@@ -326,11 +340,12 @@ theorem subst_finsumMulVec (K : Matrix τ τ R) {v : τ → MvPowerSeries σ R} 
 
 /-- If `J K = 1`, then the column-finite matrix `K` is injective on families satisfying the
 cofinite condition. -/
-theorem eq_zero_of_finsumMulVec_eq_zero [DecidableEq τ] {K J : Matrix τ τ R}
+theorem eq_zero_of_finsumMulVec_eq_zero [DecidableEq ι] {K : Matrix τ ι R} {J : Matrix ι τ R}
     (hK : ∀ j, {i | K i j ≠ 0}.Finite)
-    (hJK : ∀ i k, ∑ᶠ j, J i j * K j k = (1 : Matrix τ τ R) i k)
-    {v : τ → MvPowerSeries σ R} (hv : ∀ d, {k | coeff d (v k) ≠ 0}.Finite)
+    (hJK : ∀ i k, ∑ᶠ j, J i j * K j k = (1 : Matrix ι ι R) i k)
+    {v : ι → MvPowerSeries σ R} (hv : ∀ d, {k | coeff d (v k) ≠ 0}.Finite)
     (h : finsumMulVec K v = 0) : v = 0 := by
+  classical
   funext i
   ext d
   let Ks := (hv d).toFinset
@@ -358,62 +373,54 @@ theorem eq_zero_of_finsumMulVec_eq_zero [DecidableEq τ] {K J : Matrix τ τ R}
   rw [Finset.sum_comm]
   simp [← Finset.mul_sum, hK0]
 
-/-- `K` is a two-sided inverse of `J` among column-finite matrices. Products are taken with
-`finsum`; each is a finite sum as soon as the right-hand factor is column-finite. -/
-structure IsCofiniteInverse [DecidableEq τ] (K J : Matrix τ τ R) : Prop where
-  /-- Every column of `K` has finitely many nonzero entries. -/
-  col_finite j : {i | K i j ≠ 0}.Finite
-  /-- `K J = 1`. -/
-  mul_left i k : ∑ᶠ j, K i j * J j k = (1 : Matrix τ τ R) i k
-  /-- `J K = 1`. -/
-  mul_right i k : ∑ᶠ j, J i j * K j k = (1 : Matrix τ τ R) i k
-
-theorem IsCofiniteInverse.one [DecidableEq τ] : IsCofiniteInverse (1 : Matrix τ τ R) 1 where
-  col_finite j := (Set.finite_singleton j).subset fun i hi ↦ by
-    by_contra h
-    exact hi (Matrix.one_apply_ne h)
-  mul_left i k := by
-    rw [finsum_eq_single _ i fun j hj ↦ by simp [Matrix.one_apply_ne' hj]]
-    simp
-  mul_right i k := by
-    rw [finsum_eq_single _ i fun j hj ↦ by simp [Matrix.one_apply_ne' hj]]
-    simp
-
-/-- For finitely many equations, the inverse of an invertible matrix is a cofinite inverse. -/
-theorem IsCofiniteInverse.of_isUnit [Fintype τ] [DecidableEq τ] {J : Matrix τ τ R}
-    (hJ : IsUnit J) : IsCofiniteInverse (↑hJ.unit⁻¹ : Matrix τ τ R) J where
-  col_finite _ := Set.toFinite _
-  mul_left i k := by
-    have : (↑hJ.unit⁻¹ : Matrix τ τ R) * J = 1 := by
-      simpa only [hJ.unit_spec] using hJ.unit.inv_mul
-    rw [finsum_eq_sum_of_fintype, ← Matrix.mul_apply, this]
-  mul_right i k := by
-    have : J * (↑hJ.unit⁻¹ : Matrix τ τ R) = 1 := by
-      simpa only [hJ.unit_spec] using hJ.unit.mul_inv
-    rw [finsum_eq_sum_of_fintype, ← Matrix.mul_apply, this]
-
 end CofiniteMatrix
+
+/-! ### Jacobians
+
+These are the matrices `implicitJacobian` and `implicitJacobianLeft` of `Implicit.lean`. This file
+does not import that one, so they are defined again here, in the namespace
+`MvPowerSeries.Cofinite`. -/
+
+namespace Cofinite
+
+/-- The matrix of coefficients of the linear terms in the `Y` variables. -/
+def implicitJacobian (F : ι → MvPowerSeries (σ ⊕ τ) R) : Matrix ι τ R :=
+  fun i j ↦ coeff (single (Sum.inr j) 1) (F i)
+
+/-- The matrix of coefficients of the linear terms in the first variable block. -/
+def implicitJacobianLeft (F : ι → MvPowerSeries (τ ⊕ σ) R) : Matrix ι τ R :=
+  fun i j ↦ coeff (single (Sum.inl j) 1) (F i)
+
+/-- Swapping the variable blocks turns the left Jacobian into the right Jacobian. -/
+@[simp]
+theorem implicitJacobian_rename_sumComm (F : ι → MvPowerSeries (τ ⊕ σ) R) :
+    implicitJacobian (fun i ↦ rename (Equiv.sumComm τ σ) (F i)) = implicitJacobianLeft F := by
+  ext i j
+  simpa [implicitJacobian, implicitJacobianLeft] using
+    coeff_embDomain_rename (Equiv.sumComm τ σ).toEmbedding (F i) (single (Sum.inl j) 1)
+
+end Cofinite
 
 /-! ### The implicit function theorem -/
 
 section Implicit
 
-variable [DecidableEq τ]
+variable [DecidableEq ι] [DecidableEq τ]
 
 /-- The `n`th successive approximation, iterating `a ↦ a - (K F)(X, a)` from zero. -/
-def implicitApproxCofinite (F : τ → MvPowerSeries (σ ⊕ τ) R) (K : Matrix τ τ R) (n : ℕ) :
+def implicitApproxCofinite (F : ι → MvPowerSeries (σ ⊕ τ) R) (K : Matrix τ ι R) (n : ℕ) :
     τ → MvPowerSeries σ R :=
   ((fun a i ↦ a i - (finsumMulVec K F i).subst (Sum.elim X a))^[n]) 0
 
 /-- The implicit function, constructed coefficientwise: its coefficient of degree `d` is
 taken from the `(d + 1)`st successive approximation. -/
-def implicitFunctionCofinite (F : τ → MvPowerSeries (σ ⊕ τ) R) (K : Matrix τ τ R) :
+def implicitFunctionCofinite (F : ι → MvPowerSeries (σ ⊕ τ) R) (K : Matrix τ ι R) :
     τ → MvPowerSeries σ R :=
   fun i d ↦ coeff d (implicitApproxCofinite F K (d.degree + 1) i)
 
-variable {F : τ → MvPowerSeries (σ ⊕ τ) R} {K : Matrix τ τ R}
+variable {F : ι → MvPowerSeries (σ ⊕ τ) R} {K : Matrix τ ι R}
 
-omit [DecidableEq τ] in
+omit [DecidableEq ι] [DecidableEq τ] in
 private theorem implicitStep_admissible (hF0 : ∀ i, constantCoeff (F i) = 0)
     (hF : HasSubst F) (hK : ∀ j, {i | K i j ≠ 0}.Finite) {a : τ → MvPowerSeries σ R}
     (ha : HasSubst a) (ha0 : ∀ i, constantCoeff (a i) = 0) :
@@ -424,8 +431,9 @@ private theorem implicitStep_admissible (hF0 : ∀ i, constantCoeff (F i) = 0)
   rw [map_sub, ha0, constantCoeff_subst_eq_zero hp (by rintro (s | t) <;> simp [ha0])
     (constantCoeff_finsumMulVec K hF0 i), sub_zero]
 
+omit [DecidableEq ι] in
 private theorem implicitStep_contract
-    (hKJ : ∀ i k, ∑ᶠ j, K i j * implicitJacobian F j k = (1 : Matrix τ τ R) i k)
+    (hKJ : ∀ i k, ∑ᶠ j, K i j * Cofinite.implicitJacobian F j k = (1 : Matrix τ τ R) i k)
     (n : ℕ) {a b : τ → MvPowerSeries σ R} (ha : HasSubst a) (ha0 : ∀ i, constantCoeff (a i) = 0)
     (hb : HasSubst b) (hb0 : ∀ i, constantCoeff (b i) = 0)
     (h : ∀ i, (n : ℕ∞) ≤ (a i - b i).order) (i : τ) :
@@ -449,7 +457,7 @@ private theorem implicitStep_contract
   simpa [subst_sub hpa, subst_sub hpb, subst_X hpa, subst_X hpb] using key
 
 variable (hF0 : ∀ i, constantCoeff (F i) = 0) (hF : HasSubst F)
-  (hK : IsCofiniteInverse K (implicitJacobian F))
+  (hK : Matrix.IsCofiniteInverse K (Cofinite.implicitJacobian F))
 
 include hF0 hF hK in
 @[simp]
@@ -465,7 +473,7 @@ theorem hasSubst_implicitFunctionCofinite : HasSubst (implicitFunctionCofinite F
 include hF0 hF hK in
 /-- The implicit function solves `F(X, α(X)) = 0`. -/
 @[simp]
-theorem subst_implicitFunctionCofinite (i : τ) :
+theorem subst_implicitFunctionCofinite (i : ι) :
     (F i).subst (Sum.elim X (implicitFunctionCofinite F K)) = 0 := by
   have hα := hasSubst_implicitFunctionCofinite hF0 hF hK
   have hp := HasSubst.X_self.sumElim hα
@@ -496,9 +504,10 @@ theorem eq_implicitFunctionCofinite (a : τ → MvPowerSeries σ R) (ha : HasSub
 include hF0 hF hK in
 /-- **Formal implicit function theorem** for possibly infinitely many equations and variables.
 
-If `F(0, 0) = 0`, every monomial occurs in only finitely many `Fᵢ`, and the Jacobian has a
-two-sided inverse among column-finite matrices, then there is a unique substitutable `α(X)`
-with `α(0) = 0` and `F(X, α(X)) = 0`. -/
+Let the equations `Fⱼ` be indexed by `ι` and the unknowns `Y` by `τ`. If `F(0, 0) = 0`, every
+monomial occurs in only finitely many `Fⱼ`, and the Jacobian has a two-sided inverse among
+column-finite matrices, then there is a unique substitutable `α(X)`, indexed by `τ`, with
+`α(0) = 0` and `F(X, α(X)) = 0`. -/
 theorem existsUnique_implicitFunctionCofinite :
     ∃! a : τ → MvPowerSeries σ R,
       HasSubst a ∧ (∀ i, constantCoeff (a i) = 0) ∧ ∀ i, (F i).subst (Sum.elim X a) = 0 :=
@@ -507,23 +516,13 @@ theorem existsUnique_implicitFunctionCofinite :
       subst_implicitFunctionCofinite hF0 hF hK⟩,
     fun a h ↦ eq_implicitFunctionCofinite hF0 hF hK a h.1 h.2.1 h.2.2⟩
 
-omit [DecidableEq τ] in
-/-- For finitely many equations and variables, the solution agrees with `implicitFunction`. -/
-theorem implicitFunctionCofinite_eq_implicitFunction [Finite σ] [Fintype τ] [DecidableEq τ]
-    (hJ : IsUnit (implicitJacobian F)) :
-    implicitFunctionCofinite F (↑hJ.unit⁻¹ : Matrix τ τ R) = implicitFunction F hF0 hJ := by
-  have hF := hasSubst_of_constantCoeff_zero hF0
-  have hK := IsCofiniteInverse.of_isUnit hJ
-  exact eq_implicitFunction F hF0 hJ _ (constantCoeff_implicitFunctionCofinite hF0 hF hK)
-    (subst_implicitFunctionCofinite hF0 hF hK)
-
 end Implicit
 
 /-! ### Solving for the first variable block -/
 
 section ImplicitLeft
 
-private theorem hasSubst_rename_sumComm {F : τ → MvPowerSeries (τ ⊕ σ) R} (hF : HasSubst F) :
+private theorem hasSubst_rename_sumComm {F : ι → MvPowerSeries (τ ⊕ σ) R} (hF : HasSubst F) :
     HasSubst fun i ↦ rename (Equiv.sumComm τ σ) (F i) := by
   simpa only [rename_eq_subst] using hF.subst (HasSubst.X_comp (Equiv.sumComm τ σ))
 
@@ -535,21 +534,22 @@ private theorem subst_rename_sumComm_of_hasSubst (f : MvPowerSeries (τ ⊕ σ) 
   congr 1
   ext (j | j) : 1 <;> simp [subst_X hs]
 
-variable [DecidableEq τ]
+variable [DecidableEq ι] [DecidableEq τ]
 
 /-- The solution of `F(α(X), X) = 0`, obtained by exchanging the two variable blocks. -/
-def implicitFunctionLeftCofinite (F : τ → MvPowerSeries (τ ⊕ σ) R) (K : Matrix τ τ R) :
+def implicitFunctionLeftCofinite (F : ι → MvPowerSeries (τ ⊕ σ) R) (K : Matrix τ ι R) :
     τ → MvPowerSeries σ R :=
   implicitFunctionCofinite (fun i ↦ rename (Equiv.sumComm τ σ) (F i)) K
 
-variable {F : τ → MvPowerSeries (τ ⊕ σ) R} {K : Matrix τ τ R}
+variable {F : ι → MvPowerSeries (τ ⊕ σ) R} {K : Matrix τ ι R}
   (hF0 : ∀ i, constantCoeff (F i) = 0) (hF : HasSubst F)
-  (hK : IsCofiniteInverse K (implicitJacobianLeft F))
+  (hK : Matrix.IsCofiniteInverse K (Cofinite.implicitJacobianLeft F))
 
 include hK in
 private theorem isCofiniteInverse_rename_sumComm :
-    IsCofiniteInverse K (implicitJacobian fun i ↦ rename (Equiv.sumComm τ σ) (F i)) := by
-  rwa [implicitJacobian_rename_sumComm]
+    Matrix.IsCofiniteInverse K
+      (Cofinite.implicitJacobian fun i ↦ rename (Equiv.sumComm τ σ) (F i)) := by
+  rwa [Cofinite.implicitJacobian_rename_sumComm]
 
 include hF0 hF hK in
 @[simp]
@@ -566,7 +566,7 @@ theorem hasSubst_implicitFunctionLeftCofinite : HasSubst (implicitFunctionLeftCo
 include hF0 hF hK in
 /-- The left implicit function solves `F(α(X), X) = 0`. -/
 @[simp]
-theorem subst_implicitFunctionLeftCofinite (i : τ) :
+theorem subst_implicitFunctionLeftCofinite (i : ι) :
     (F i).subst (Sum.elim (implicitFunctionLeftCofinite F K) X) = 0 :=
   (subst_rename_sumComm_of_hasSubst _ (hasSubst_implicitFunctionLeftCofinite hF0 hF hK)).symm.trans
     (subst_implicitFunctionCofinite (by simpa [constantCoeff_rename] using hF0)
@@ -594,5 +594,133 @@ theorem existsUnique_implicitFunctionLeftCofinite :
     fun a h ↦ eq_implicitFunctionLeftCofinite hF0 hF hK a h.1 h.2.1 h.2.2⟩
 
 end ImplicitLeft
+
+/-! ### Finitely many equations
+
+For finitely many equations, `HasSubst F` and `HasSubst α` hold automatically, and the inverse of
+an invertible Jacobian is a cofinite inverse (`Matrix.IsCofiniteInverse.of_isUnit`). So the theorem
+above specializes to the classical formal implicit function theorem. The statements below are
+those of `Implicit.lean`, in the namespace `MvPowerSeries.Cofinite`; the variables `σ` may even
+be infinite. -/
+
+namespace Cofinite
+
+section Finite
+
+variable [Fintype τ] [DecidableEq τ]
+
+/-- The formal solution `α(X)` of `F(X, α(X)) = 0` for finitely many equations with invertible
+Jacobian, obtained from `implicitFunctionCofinite` with `K = J⁻¹`. -/
+def implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R)
+    (_hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobian F)) :
+    τ → MvPowerSeries σ R :=
+  implicitFunctionCofinite F (↑hJ.unit⁻¹ : Matrix τ τ R)
+
+@[simp]
+theorem constantCoeff_implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R)
+    (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobian F)) (i : τ) :
+    constantCoeff (implicitFunction F hF hJ i) = 0 :=
+  constantCoeff_implicitFunctionCofinite hF (hasSubst_of_constantCoeff_zero hF) (.of_isUnit hJ) i
+
+/-- Substitution of the implicit function is defined. -/
+theorem hasSubst_implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R)
+    (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobian F)) :
+    HasSubst (Sum.elim X (implicitFunction F hF hJ)) :=
+  HasSubst.X_self.sumElim
+    (hasSubst_implicitFunctionCofinite hF (hasSubst_of_constantCoeff_zero hF) (.of_isUnit hJ))
+
+/-- The implicit function solves the original system of equations. -/
+@[simp]
+theorem subst_implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R)
+    (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobian F)) (i : τ) :
+    (F i).subst (Sum.elim X (implicitFunction F hF hJ)) = 0 :=
+  subst_implicitFunctionCofinite hF (hasSubst_of_constantCoeff_zero hF) (.of_isUnit hJ) i
+
+/-- Any zero-constant-term solution is the implicit function. -/
+theorem eq_implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R)
+    (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobian F))
+    (a : τ → MvPowerSeries σ R) (ha0 : ∀ i, constantCoeff (a i) = 0)
+    (ha : ∀ i, (F i).subst (Sum.elim X a) = 0) : a = implicitFunction F hF hJ :=
+  eq_implicitFunctionCofinite hF (hasSubst_of_constantCoeff_zero hF) (.of_isUnit hJ) a
+    (hasSubst_of_constantCoeff_zero ha0) ha0 ha
+
+/-- **Formal implicit function theorem** over a commutative ring, for finitely many equations.
+
+If `F(0, 0) = 0` and its matrix of linear `Y` coefficients is invertible, there
+is a unique tuple `α(X)` with `α(0) = 0` and `F(X, α(X)) = 0`. -/
+theorem existsUnique_implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R)
+    (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobian F)) :
+    ∃! a : τ → MvPowerSeries σ R,
+      (∀ i, constantCoeff (a i) = 0) ∧
+      (∀ i, (F i).subst (Sum.elim X a) = 0) :=
+  ⟨_, ⟨constantCoeff_implicitFunction F hF hJ, subst_implicitFunction F hF hJ⟩,
+    fun a h ↦ eq_implicitFunction F hF hJ a h.1 h.2⟩
+
+/-- A determinant formulation of the formal implicit function theorem. -/
+theorem existsUnique_implicitFunction_of_isUnit_det (F : τ → MvPowerSeries (σ ⊕ τ) R)
+    (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobian F).det) :
+    ∃! a : τ → MvPowerSeries σ R,
+      (∀ i, constantCoeff (a i) = 0) ∧
+      (∀ i, (F i).subst (Sum.elim X a) = 0) :=
+  existsUnique_implicitFunction F hF ((Matrix.isUnit_iff_isUnit_det _).mpr hJ)
+
+/-- The solution of `F(α(X), X) = 0` for finitely many equations with invertible Jacobian in
+the first variable block. -/
+def implicitFunctionLeft (F : τ → MvPowerSeries (τ ⊕ σ) R)
+    (_hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobianLeft F)) :
+    τ → MvPowerSeries σ R :=
+  implicitFunctionLeftCofinite F (↑hJ.unit⁻¹ : Matrix τ τ R)
+
+@[simp]
+theorem constantCoeff_implicitFunctionLeft (F : τ → MvPowerSeries (τ ⊕ σ) R)
+    (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobianLeft F)) (i : τ) :
+    constantCoeff (implicitFunctionLeft F hF hJ i) = 0 :=
+  constantCoeff_implicitFunctionLeftCofinite hF (hasSubst_of_constantCoeff_zero hF)
+    (.of_isUnit hJ) i
+
+/-- Substitution of the left implicit function is defined. -/
+theorem hasSubst_implicitFunctionLeft (F : τ → MvPowerSeries (τ ⊕ σ) R)
+    (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobianLeft F)) :
+    HasSubst (Sum.elim (implicitFunctionLeft F hF hJ) X) :=
+  (hasSubst_implicitFunctionLeftCofinite hF (hasSubst_of_constantCoeff_zero hF)
+    (.of_isUnit hJ)).sumElim HasSubst.X_self
+
+/-- The left implicit function solves `F(α(X), X) = 0`. -/
+@[simp]
+theorem subst_implicitFunctionLeft (F : τ → MvPowerSeries (τ ⊕ σ) R)
+    (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobianLeft F)) (i : τ) :
+    (F i).subst (Sum.elim (implicitFunctionLeft F hF hJ) X) = 0 :=
+  subst_implicitFunctionLeftCofinite hF (hasSubst_of_constantCoeff_zero hF) (.of_isUnit hJ) i
+
+/-- Any zero-constant-term solution of `F(a(X), X) = 0` is the left implicit function. -/
+theorem eq_implicitFunctionLeft (F : τ → MvPowerSeries (τ ⊕ σ) R)
+    (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobianLeft F))
+    (a : τ → MvPowerSeries σ R) (ha0 : ∀ i, constantCoeff (a i) = 0)
+    (ha : ∀ i, (F i).subst (Sum.elim a X) = 0) : a = implicitFunctionLeft F hF hJ :=
+  eq_implicitFunctionLeftCofinite hF (hasSubst_of_constantCoeff_zero hF) (.of_isUnit hJ) a
+    (hasSubst_of_constantCoeff_zero ha0) ha0 ha
+
+/-- **Formal implicit function theorem**, solving for the first variable block.
+Invertibility of its linear coefficient matrix gives a unique zero-constant-term
+solution of `F(α(X), X) = 0`. -/
+theorem existsUnique_implicitFunctionLeft (F : τ → MvPowerSeries (τ ⊕ σ) R)
+    (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobianLeft F)) :
+    ∃! a : τ → MvPowerSeries σ R,
+      (∀ i, constantCoeff (a i) = 0) ∧
+      (∀ i, (F i).subst (Sum.elim a X) = 0) :=
+  ⟨_, ⟨constantCoeff_implicitFunctionLeft F hF hJ, subst_implicitFunctionLeft F hF hJ⟩,
+    fun a h ↦ eq_implicitFunctionLeft F hF hJ a h.1 h.2⟩
+
+/-- A determinant formulation of the implicit function theorem for the first variable block. -/
+theorem existsUnique_implicitFunctionLeft_of_isUnit_det (F : τ → MvPowerSeries (τ ⊕ σ) R)
+    (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobianLeft F).det) :
+    ∃! a : τ → MvPowerSeries σ R,
+      (∀ i, constantCoeff (a i) = 0) ∧
+      (∀ i, (F i).subst (Sum.elim a X) = 0) :=
+  existsUnique_implicitFunctionLeft F hF ((Matrix.isUnit_iff_isUnit_det _).mpr hJ)
+
+end Finite
+
+end Cofinite
 
 end MvPowerSeries

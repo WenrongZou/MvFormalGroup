@@ -326,7 +326,7 @@ private theorem hasSubst_toSumPowerSeries : HasSubst F.toSumPowerSeries := by
   exact F.hasSubst.subst (HasSubst.X_comp _)
 
 private theorem implicitJacobianLeft_toSumPowerSeries :
-    implicitJacobianLeft F.toSumPowerSeries = 1 := by
+    Cofinite.implicitJacobianLeft F.toSumPowerSeries = 1 := by
   ext i j
   have h : coeff (single (Sum.inl j) 1) (F.toSumPowerSeries i) =
       coeff (single (0, j) 1) (F.toPowerSeries i) := by
@@ -337,7 +337,7 @@ private theorem implicitJacobianLeft_toSumPowerSeries :
   simp [Matrix.one_apply, eq_comm]
 
 private theorem isCofiniteInverse_one :
-    IsCofiniteInverse 1 (implicitJacobianLeft F.toSumPowerSeries) := by
+    Matrix.IsCofiniteInverse 1 (Cofinite.implicitJacobianLeft F.toSumPowerSeries) := by
   rw [implicitJacobianLeft_toSumPowerSeries]
   exact .one
 

@@ -1,3 +1,4 @@
+import MvFormalGroup.ForMathlib.Matrix.ColumnFinite
 import MvFormalGroup.ForMathlib.MvFormalGroup.Basic
 import MvFormalGroup.ForMathlib.MvFormalGroup.Hom
 import MvFormalGroup.ForMathlib.MvFormalGroup.Iso
