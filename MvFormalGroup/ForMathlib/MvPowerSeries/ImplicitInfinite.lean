@@ -87,7 +87,7 @@ section Order
 
 /-- A lower bound on the order of a difference gives agreement of low-degree coefficients. -/
 theorem coeff_eq_of_le_order_sub {f g : MvPowerSeries σ R} {n : ℕ}
-    (h : (n : ℕ∞) ≤ (f - g).order) {d : σ →₀ ℕ} (hd : d.degree < n) :
+    (h : n ≤ (f - g).order) {d : σ →₀ ℕ} (hd : d.degree < n) :
     coeff d f = coeff d g := by
   rw [← sub_eq_zero, ← map_sub]
   exact coeff_of_lt_order ((Nat.cast_lt.mpr hd).trans_le h)
@@ -110,8 +110,8 @@ private theorem constantCoeff_multiset_prod {a : σ → MvPowerSeries τ R}
 
 variable {a b : σ → MvPowerSeries τ R} {n : ℕ}
 
-private theorem le_order_multiset_prod_sub (h : ∀ s, (n : ℕ∞) ≤ (a s - b s).order)
-    (m : Multiset σ) : (n : ℕ∞) ≤ ((m.map a).prod - (m.map b).prod).order := by
+private theorem le_order_multiset_prod_sub (h : ∀ s, n ≤ (a s - b s).order)
+    (m : Multiset σ) : n ≤ ((m.map a).prod - (m.map b).prod).order := by
   induction m using Multiset.induction_on with
   | empty => simp
   | cons s m ih =>
@@ -122,9 +122,9 @@ private theorem le_order_multiset_prod_sub (h : ∀ s, (n : ℕ∞) ≤ (a s - b
       (((h s).trans le_self_add).trans le_order_mul)).trans min_order_le_add
 
 private theorem succ_le_order_multiset_prod_sub (ha : ∀ s, constantCoeff (a s) = 0)
-    (hb : ∀ s, constantCoeff (b s) = 0) (h : ∀ s, (n : ℕ∞) ≤ (a s - b s).order)
+    (hb : ∀ s, constantCoeff (b s) = 0) (h : ∀ s, n ≤ (a s - b s).order)
     (m : Multiset σ) (hm : 2 ≤ m.card) :
-    ((n + 1 : ℕ) : ℕ∞) ≤ ((m.map a).prod - (m.map b).prod).order := by
+    n + 1 ≤ ((m.map a).prod - (m.map b).prod).order := by
   induction m using Multiset.induction_on with
   | empty => simp at hm
   | cons s m _ =>
@@ -133,23 +133,20 @@ private theorem succ_le_order_multiset_prod_sub (ha : ∀ s, constantCoeff (a s)
         a s * ((m.map a).prod - (m.map b).prod) + (a s - b s) * (m.map b).prod := by ring
     simp only [Multiset.map_cons, Multiset.prod_cons, this]
     refine (le_min ?_ ?_).trans min_order_le_add
-    · calc ((n + 1 : ℕ) : ℕ∞) = 1 + n := by push_cast; exact add_comm _ _
-        _ ≤ _ := add_le_add (one_le_order_iff_constCoeff_eq_zero.mpr (ha s))
-          (le_order_multiset_prod_sub h m)
-        _ ≤ _ := le_order_mul
-    · calc ((n + 1 : ℕ) : ℕ∞) = n + 1 := by push_cast; rfl
-        _ ≤ _ := add_le_add (h s)
-          (one_le_order_iff_constCoeff_eq_zero.mpr (constantCoeff_multiset_prod hb hm0))
-        _ ≤ _ := le_order_mul
+    · rw [add_comm]
+      exact (add_le_add (one_le_order_iff_constCoeff_eq_zero.mpr (ha s))
+        (le_order_multiset_prod_sub h m)).trans le_order_mul
+    · exact (add_le_add (h s) (one_le_order_iff_constCoeff_eq_zero.mpr
+        (constantCoeff_multiset_prod hb hm0))).trans le_order_mul
 
 /-- Substituting two families that agree below degree `n` gives series agreeing below
 degree `n + 1`, provided `f` has no linear term in a variable where the families differ.
 No finiteness of the variables is needed. -/
 theorem succ_le_order_subst_sub {f : MvPowerSeries σ R} (ha : HasSubst a) (hb : HasSubst b)
     (ha0 : ∀ s, constantCoeff (a s) = 0) (hb0 : ∀ s, constantCoeff (b s) = 0)
-    (h : ∀ s, (n : ℕ∞) ≤ (a s - b s).order)
+    (h : ∀ s, n ≤ (a s - b s).order)
     (hf : ∀ s, a s ≠ b s → coeff (single s 1) f = 0) :
-    ((n + 1 : ℕ) : ℕ∞) ≤ (f.subst a - f.subst b).order := by
+    n + 1 ≤ (f.subst a - f.subst b).order := by
   refine nat_le_order fun e he ↦ ?_
   rw [map_sub, sub_eq_zero, coeff_subst ha, coeff_subst hb]
   refine finsum_congr fun d ↦ ?_
@@ -181,10 +178,10 @@ private def iterLimit (i : ι) : MvPowerSeries τ R :=
   fun d ↦ coeff d ((T^[d.degree + 1]) 0 i)
 
 variable
-  (hT0 : ∀ a, HasSubst a → (∀ i, constantCoeff (a i) = 0) →
+  (hT0 : ∀ a, (HasSubst a ∧ ∀ i, constantCoeff (a i) = 0) →
     HasSubst (T a) ∧ ∀ i, constantCoeff (T a i) = 0)
-  (hT : ∀ (n : ℕ) a b, HasSubst a → (∀ i, constantCoeff (a i) = 0) →
-    HasSubst b → (∀ i, constantCoeff (b i) = 0) →
+  (hT : ∀ (n : ℕ) a b, (HasSubst a ∧ (∀ i, constantCoeff (a i) = 0)) →
+    (HasSubst b ∧ (∀ i, constantCoeff (b i) = 0)) →
     (∀ i, (n : ℕ∞) ≤ (a i - b i).order) →
     ∀ i, ((n + 1 : ℕ) : ℕ∞) ≤ (T a i - T b i).order)
 
@@ -195,58 +192,56 @@ private theorem iterate_admissible (n : ℕ) :
   | zero => simp [hasSubst_def]
   | succ n ih =>
     rw [iterate_succ_apply']
-    exact hT0 _ ih.1 ih.2
+    exact hT0 _ ih
 
 include hT0 hT in
 private theorem le_order_iterate_sub (m k : ℕ) (i : ι) :
-    (k : ℕ∞) ≤ ((T^[m + k]) 0 i - (T^[k]) 0 i).order := by
+    k ≤ ((T^[m + k]) 0 i - (T^[k]) 0 i).order := by
   induction k generalizing i with
   | zero => simp
   | succ k ih =>
     rw [← add_assoc, iterate_succ_apply', iterate_succ_apply']
     have h1 := iterate_admissible T hT0 (m + k)
     have h2 := iterate_admissible T hT0 k
-    exact hT k _ _ h1.1 h1.2 h2.1 h2.2 ih i
+    exact hT k _ _ h1 h2 ih i
 
 include hT0 hT in
 private theorem le_order_iterLimit_sub (n : ℕ) (i : ι) :
-    (n : ℕ∞) ≤ (iterLimit T i - (T^[n]) 0 i).order := by
+    n ≤ (iterLimit T i - (T^[n]) 0 i).order := by
   refine nat_le_order fun d hd ↦ ?_
   rw [map_sub, sub_eq_zero]
   obtain ⟨m, rfl⟩ := Nat.exists_eq_add_of_le' hd
   exact (coeff_eq_of_le_order_sub (le_order_iterate_sub T hT0 hT m _ i) (lt_add_one _)).symm
 
 include hT0 in
-private theorem constantCoeff_iterLimit (i : ι) : constantCoeff (iterLimit T i) = 0 := by
-  simpa [iterLimit, ← coeff_zero_eq_constantCoeff_apply, coeff_apply] using
-    (iterate_admissible T hT0 1).2 i
-
-include hT0 in
-private theorem hasSubst_iterLimit : HasSubst (iterLimit T) where
-  const_coeff i := by simp [constantCoeff_iterLimit T hT0 i]
-  coeff_zero d := (iterate_admissible T hT0 (d.degree + 1)).1.coeff_zero d
+private theorem iterLimit_admissible :
+    HasSubst (iterLimit T) ∧ ∀ i, constantCoeff (iterLimit T i) = 0 := by
+  have h0 (i : ι) : constantCoeff (iterLimit T i) = 0 := by
+    simpa [iterLimit, ← coeff_zero_eq_constantCoeff_apply, coeff_apply] using
+      (iterate_admissible T hT0 1).2 i
+  exact ⟨⟨fun i ↦ by simp [h0 i], fun d ↦ (iterate_admissible T hT0 (d.degree + 1)).1.coeff_zero d⟩,
+    h0⟩
 
 include hT0 hT in
 private theorem map_iterLimit : T (iterLimit T) = iterLimit T := by
   funext i
   ext d
-  have h := hT _ _ _ (hasSubst_iterLimit T hT0) (constantCoeff_iterLimit T hT0)
-    (iterate_admissible T hT0 _).1 (iterate_admissible T hT0 _).2
+  have h := hT _ _ _ (iterLimit_admissible T hT0) (iterate_admissible T hT0 _)
     (le_order_iterLimit_sub T hT0 hT (d.degree + 1)) i
   rw [← iterate_succ_apply' T] at h
   rw [coeff_eq_of_le_order_sub h (by omega),
     coeff_eq_of_le_order_sub (le_order_iterLimit_sub T hT0 hT (d.degree + 1 + 1) i) (by omega)]
 
 include hT0 hT in
-private theorem eq_iterLimit (b : ι → MvPowerSeries τ R) (hb : HasSubst b)
-    (hb0 : ∀ i, constantCoeff (b i) = 0) (hbfix : T b = b) : b = iterLimit T := by
+private theorem eq_iterLimit (b : ι → MvPowerSeries τ R)
+    (hb : HasSubst b ∧ ∀ i, constantCoeff (b i) = 0) (hbfix : T b = b) : b = iterLimit T := by
   have h (n : ℕ) : ∀ i, (n : ℕ∞) ≤ (b i - iterLimit T i).order := by
     induction n with
     | zero => simp
     | succ n ih =>
       intro i
-      simpa only [hbfix, map_iterLimit T hT0 hT] using hT n b (iterLimit T) hb hb0
-        (hasSubst_iterLimit T hT0) (constantCoeff_iterLimit T hT0) ih i
+      simpa only [hbfix, map_iterLimit T hT0 hT] using
+        hT n b (iterLimit T) hb (iterLimit_admissible T hT0) ih i
   funext i
   ext d
   exact coeff_eq_of_le_order_sub (h _ i) (lt_add_one _)
@@ -318,10 +313,8 @@ theorem subst_finsumMulVec (K : Matrix τ ι R) {v : ι → MvPowerSeries σ R} 
       simp [c, hcD d hd]),
     finsum_eq_sum_of_support_subset _ (s := J) (Function.support_subset_iff'.mpr fun j hj ↦ by
       rw [hR, Finset.sum_eq_zero fun d hd ↦ by rw [hvJ d hd j hj, zero_mul], mul_zero])]
-  simp only [smul_eq_mul]
   rw [Finset.sum_congr rfl fun d hd ↦ by rw [hL d hd]]
-  simp only [hR, Finset.sum_mul, Finset.mul_sum, mul_assoc]
-  exact Finset.sum_comm
+  simpa [hR, Finset.sum_mul, Finset.mul_sum, mul_assoc] using Finset.sum_comm
 
 /-- If `J K = 1`, then the column-finite matrix `K` is injective on families satisfying the
 cofinite condition. -/
@@ -331,8 +324,7 @@ theorem eq_zero_of_finsumMulVec_eq_zero [DecidableEq ι] {K : Matrix τ ι R} {J
     {v : ι → MvPowerSeries σ R} (hv : ∀ d, {k | coeff d (v k) ≠ 0}.Finite)
     (h : finsumMulVec K v = 0) : v = 0 := by
   classical
-  funext i
-  ext d
+  ext i d
   let Ks := (hv d).toFinset
   let Js := Ks.biUnion fun k ↦ (hK k).toFinset
   have hKs : ∀ k ∉ Ks, coeff d (v k) = 0 := by simp [Ks]
@@ -345,11 +337,9 @@ theorem eq_zero_of_finsumMulVec_eq_zero [DecidableEq ι] {K : Matrix τ ι R} {J
       rw [← finsum_eq_sum_of_support_subset _ (Function.support_subset_iff'.mpr fun j hj ↦ by
         simp [hJs k hk j hj]), hJK]]
     by_cases hiK : i ∈ Ks
-    · rw [Finset.sum_eq_single i (fun k _ hk ↦ by simp [Matrix.one_apply_ne' hk])
-        (fun h ↦ (h hiK).elim)]
-      simp
+    · simp +contextual [Finset.sum_eq_single i, hiK, Matrix.one_apply_ne']
     · rw [hKs i hiK, Finset.sum_eq_zero fun k hk ↦ ?_]
-      rw [Matrix.one_apply_ne (by rintro rfl; exact hiK hk), zero_mul]
+      simp [(ne_of_mem_of_not_mem hk hiK).symm]
   rw [hi]
   simp only [Finset.sum_mul, mul_assoc]
   rw [Finset.sum_comm]
@@ -379,7 +369,7 @@ theorem implicitJacobian_rename_sumComm (F : ι → MvPowerSeries (τ ⊕ σ) R)
     implicitJacobian (fun i ↦ rename (Equiv.sumComm τ σ) (F i)) = implicitJacobianLeft F := by
   ext i j
   simpa [implicitJacobian, implicitJacobianLeft] using
-    coeff_embDomain_rename (Equiv.sumComm τ σ).toEmbedding (F i) (single (Sum.inl j) 1)
+    coeff_embDomain_rename (Equiv.sumComm τ σ).toEmbedding _ (single (Sum.inl j) 1)
 
 end Cofinite
 
@@ -405,27 +395,27 @@ variable {F : ι → MvPowerSeries (σ ⊕ τ) R} {K : Matrix τ ι R}
 omit [DecidableEq ι] [DecidableEq τ] in
 private theorem implicitStep_admissible (hF0 : ∀ i, constantCoeff (F i) = 0)
     (hF : HasSubst F) (hK : ∀ j, {i | K i j ≠ 0}.Finite) {a : τ → MvPowerSeries σ R}
-    (ha : HasSubst a) (ha0 : ∀ i, constantCoeff (a i) = 0) :
+    (ha : HasSubst a ∧ ∀ i, constantCoeff (a i) = 0) :
     HasSubst (fun i ↦ a i - (finsumMulVec K F i).subst (Sum.elim X a)) ∧
       ∀ i, constantCoeff (a i - (finsumMulVec K F i).subst (Sum.elim X a)) = 0 := by
-  have hp := HasSubst.X.sumElim ha
-  refine ⟨ha.sub ((hasSubst_finsumMulVec hK hF hF0).subst hp), fun i ↦ ?_⟩
-  rw [map_sub, ha0, constantCoeff_subst_eq_zero hp (by rintro (s | t) <;> simp [ha0])
+  have hp := HasSubst.X.sumElim ha.1
+  refine ⟨ha.1.sub ((hasSubst_finsumMulVec hK hF hF0).subst hp), fun i ↦ ?_⟩
+  rw [map_sub, ha.2, constantCoeff_subst_eq_zero hp (by rintro (s | t) <;> simp [ha.2])
     (constantCoeff_finsumMulVec K hF0 i), sub_zero]
 
 omit [DecidableEq ι] in
 private theorem implicitStep_contract
     (hKJ : ∀ i k, ∑ᶠ j, K i j * Cofinite.implicitJacobian F j k = (1 : Matrix τ τ R) i k)
-    (n : ℕ) {a b : τ → MvPowerSeries σ R} (ha : HasSubst a) (ha0 : ∀ i, constantCoeff (a i) = 0)
-    (hb : HasSubst b) (hb0 : ∀ i, constantCoeff (b i) = 0)
-    (h : ∀ i, (n : ℕ∞) ≤ (a i - b i).order) (i : τ) :
-    ((n + 1 : ℕ) : ℕ∞) ≤ ((a i - (finsumMulVec K F i).subst (Sum.elim X a)) -
+    (n : ℕ) {a b : τ → MvPowerSeries σ R} (ha : HasSubst a ∧ ∀ i, constantCoeff (a i) = 0)
+    (hb : HasSubst b ∧ ∀ i, constantCoeff (b i) = 0)
+    (h : ∀ i, n ≤ (a i - b i).order) (i : τ) :
+    (n + 1) ≤ ((a i - (finsumMulVec K F i).subst (Sum.elim X a)) -
       (b i - (finsumMulVec K F i).subst (Sum.elim X b))).order := by
   classical
-  have hpa := HasSubst.X.sumElim ha
-  have hpb := HasSubst.X.sumElim hb
+  have hpa := HasSubst.X.sumElim ha.1
+  have hpb := HasSubst.X.sumElim hb.1
   have key := succ_le_order_subst_sub (n := n) (f := X (Sum.inr i) - finsumMulVec K F i) hpa hpb
-    (by rintro (s | k) <;> simp [ha0]) (by rintro (s | k) <;> simp [hb0])
+    (by rintro (s | k) <;> simp [ha.2]) (by rintro (s | k) <;> simp [hb.2])
     (by rintro (s | k) <;> simp [h]) (by
       rintro (s | k) hs
       · simp at hs
@@ -445,12 +435,12 @@ include hF0 hF hK in
 @[simp]
 theorem constantCoeff_implicitFunctionCofinite (i : τ) :
     constantCoeff (implicitFunctionCofinite F K i) = 0 :=
-  constantCoeff_iterLimit _ (fun _ ha ha0 ↦ implicitStep_admissible hF0 hF hK.col_finite ha ha0) i
+  (iterLimit_admissible _ fun _ ha ↦ implicitStep_admissible hF0 hF hK.col_finite ha).2 i
 
 include hF0 hF hK in
 /-- The implicit function satisfies the cofinite condition, so it can be substituted. -/
 theorem hasSubst_implicitFunctionCofinite : HasSubst (implicitFunctionCofinite F K) :=
-  hasSubst_iterLimit _ (fun _ ha ha0 ↦ implicitStep_admissible hF0 hF hK.col_finite ha ha0)
+  (iterLimit_admissible _ fun _ ha ↦ implicitStep_admissible hF0 hF hK.col_finite ha).1
 
 include hF0 hF hK in
 /-- The implicit function solves `F(X, α(X)) = 0`. -/
@@ -462,8 +452,8 @@ theorem subst_implicitFunctionCofinite (i : ι) :
     have h : implicitFunctionCofinite F K j -
         (finsumMulVec K F j).subst (Sum.elim X (implicitFunctionCofinite F K)) =
         implicitFunctionCofinite F K j :=
-      congrFun (map_iterLimit _ (fun _ ha ha0 ↦ implicitStep_admissible hF0 hF hK.col_finite ha ha0)
-        (fun n _ _ ha ha0 hb hb0 h ↦ implicitStep_contract hK.mul_left n ha ha0 hb hb0 h)) j
+      congrFun (map_iterLimit _ (fun _ ha ↦ implicitStep_admissible hF0 hF hK.col_finite ha)
+        (fun n _ _ ha hb h ↦ implicitStep_contract hK.mul_left n ha hb h)) j
     exact sub_eq_self.mp h
   have hv := hF.subst hp
   have h0 := eq_zero_of_finsumMulVec_eq_zero hK.col_finite hK.mul_right hv.coeff_zero
@@ -476,8 +466,8 @@ theorem eq_implicitFunctionCofinite (a : τ → MvPowerSeries σ R) (ha : HasSub
     (ha0 : ∀ i, constantCoeff (a i) = 0) (h : ∀ i, (F i).subst (Sum.elim X a) = 0) :
     a = implicitFunctionCofinite F K := by
   have hp := HasSubst.X.sumElim ha
-  refine eq_iterLimit _ (fun _ ha ha0 ↦ implicitStep_admissible hF0 hF hK.col_finite ha ha0)
-    (fun n _ _ ha ha0 hb hb0 h ↦ implicitStep_contract hK.mul_left n ha ha0 hb hb0 h) a ha ha0
+  refine eq_iterLimit _ (fun _ ha ↦ implicitStep_admissible hF0 hF hK.col_finite ha)
+    (fun n _ _ ha hb h ↦ implicitStep_contract hK.mul_left n ha hb h) a ⟨ha, ha0⟩
     (funext fun i ↦ ?_)
   have h0 : (fun j ↦ (F j).subst (Sum.elim X a)) = 0 := funext h
   simp only [subst_finsumMulVec K hF hp i, h0, finsumMulVec_zero, Pi.zero_apply, sub_zero]
@@ -582,7 +572,8 @@ For finitely many equations, `HasSubst F` and `HasSubst α` hold automatically, 
 an invertible Jacobian is a cofinite inverse (`Matrix.IsCofiniteInverse.of_isUnit`). So the theorem
 above specializes to the classical formal implicit function theorem. The statements below are
 those of `Implicit.lean`, in the namespace `MvPowerSeries.Cofinite`; the variables `σ` may even
-be infinite. -/
+be infinite. The definitions do not take the hypothesis `F(0, 0) = 0`, which only the theorems
+use. -/
 
 namespace Cofinite
 
@@ -592,21 +583,20 @@ variable [Fintype τ] [DecidableEq τ]
 
 /-- The formal solution `α(X)` of `F(X, α(X)) = 0` for finitely many equations with invertible
 Jacobian, obtained from `implicitFunctionCofinite` with `K = J⁻¹`. -/
-def implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R)
-    (_hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobian F)) :
+def implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R) (hJ : IsUnit (implicitJacobian F)) :
     τ → MvPowerSeries σ R :=
   implicitFunctionCofinite F (↑hJ.unit⁻¹ : Matrix τ τ R)
 
 @[simp]
 theorem constantCoeff_implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R)
     (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobian F)) (i : τ) :
-    constantCoeff (implicitFunction F hF hJ i) = 0 :=
+    constantCoeff (implicitFunction F hJ i) = 0 :=
   constantCoeff_implicitFunctionCofinite hF (hasSubst_of_constantCoeff_zero hF) (.of_isUnit hJ) i
 
 /-- Substitution of the implicit function is defined. -/
 theorem hasSubst_implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R)
     (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobian F)) :
-    HasSubst (Sum.elim X (implicitFunction F hF hJ)) :=
+    HasSubst (Sum.elim X (implicitFunction F hJ)) :=
   HasSubst.X.sumElim
     (hasSubst_implicitFunctionCofinite hF (hasSubst_of_constantCoeff_zero hF) (.of_isUnit hJ))
 
@@ -614,14 +604,14 @@ theorem hasSubst_implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R)
 @[simp]
 theorem subst_implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R)
     (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobian F)) (i : τ) :
-    (F i).subst (Sum.elim X (implicitFunction F hF hJ)) = 0 :=
+    (F i).subst (Sum.elim X (implicitFunction F hJ)) = 0 :=
   subst_implicitFunctionCofinite hF (hasSubst_of_constantCoeff_zero hF) (.of_isUnit hJ) i
 
 /-- Any zero-constant-term solution is the implicit function. -/
 theorem eq_implicitFunction (F : τ → MvPowerSeries (σ ⊕ τ) R)
     (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobian F))
     (a : τ → MvPowerSeries σ R) (ha0 : ∀ i, constantCoeff (a i) = 0)
-    (ha : ∀ i, (F i).subst (Sum.elim X a) = 0) : a = implicitFunction F hF hJ :=
+    (ha : ∀ i, (F i).subst (Sum.elim X a) = 0) : a = implicitFunction F hJ :=
   eq_implicitFunctionCofinite hF (hasSubst_of_constantCoeff_zero hF) (.of_isUnit hJ) a
     (hasSubst_of_constantCoeff_zero ha0) ha0 ha
 
@@ -648,21 +638,21 @@ theorem existsUnique_implicitFunction_of_isUnit_det (F : τ → MvPowerSeries (�
 /-- The solution of `F(α(X), X) = 0` for finitely many equations with invertible Jacobian in
 the first variable block. -/
 def implicitFunctionLeft (F : τ → MvPowerSeries (τ ⊕ σ) R)
-    (_hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobianLeft F)) :
+    (hJ : IsUnit (implicitJacobianLeft F)) :
     τ → MvPowerSeries σ R :=
   implicitFunctionLeftCofinite F (↑hJ.unit⁻¹ : Matrix τ τ R)
 
 @[simp]
 theorem constantCoeff_implicitFunctionLeft (F : τ → MvPowerSeries (τ ⊕ σ) R)
     (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobianLeft F)) (i : τ) :
-    constantCoeff (implicitFunctionLeft F hF hJ i) = 0 :=
+    constantCoeff (implicitFunctionLeft F hJ i) = 0 :=
   constantCoeff_implicitFunctionLeftCofinite hF (hasSubst_of_constantCoeff_zero hF)
     (.of_isUnit hJ) i
 
 /-- Substitution of the left implicit function is defined. -/
 theorem hasSubst_implicitFunctionLeft (F : τ → MvPowerSeries (τ ⊕ σ) R)
     (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobianLeft F)) :
-    HasSubst (Sum.elim (implicitFunctionLeft F hF hJ) X) :=
+    HasSubst (Sum.elim (implicitFunctionLeft F hJ) X) :=
   (hasSubst_implicitFunctionLeftCofinite hF (hasSubst_of_constantCoeff_zero hF)
     (.of_isUnit hJ)).sumElim HasSubst.X
 
@@ -670,14 +660,14 @@ theorem hasSubst_implicitFunctionLeft (F : τ → MvPowerSeries (τ ⊕ σ) R)
 @[simp]
 theorem subst_implicitFunctionLeft (F : τ → MvPowerSeries (τ ⊕ σ) R)
     (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobianLeft F)) (i : τ) :
-    (F i).subst (Sum.elim (implicitFunctionLeft F hF hJ) X) = 0 :=
+    (F i).subst (Sum.elim (implicitFunctionLeft F hJ) X) = 0 :=
   subst_implicitFunctionLeftCofinite hF (hasSubst_of_constantCoeff_zero hF) (.of_isUnit hJ) i
 
 /-- Any zero-constant-term solution of `F(a(X), X) = 0` is the left implicit function. -/
 theorem eq_implicitFunctionLeft (F : τ → MvPowerSeries (τ ⊕ σ) R)
     (hF : ∀ i, constantCoeff (F i) = 0) (hJ : IsUnit (implicitJacobianLeft F))
     (a : τ → MvPowerSeries σ R) (ha0 : ∀ i, constantCoeff (a i) = 0)
-    (ha : ∀ i, (F i).subst (Sum.elim a X) = 0) : a = implicitFunctionLeft F hF hJ :=
+    (ha : ∀ i, (F i).subst (Sum.elim a X) = 0) : a = implicitFunctionLeft F hJ :=
   eq_implicitFunctionLeftCofinite hF (hasSubst_of_constantCoeff_zero hF) (.of_isUnit hJ) a
     (hasSubst_of_constantCoeff_zero ha0) ha0 ha
 
