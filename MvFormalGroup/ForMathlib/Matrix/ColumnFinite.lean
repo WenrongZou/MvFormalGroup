@@ -42,14 +42,14 @@ because `K` is column-finite; the product `K J` is a finite sum when `J` is colu
 
 Column-finite matrices are the matrices of linear maps between free modules `R^(τ) → R^(ι)`. When
 `J` is column-finite, this says that `J` induces an isomorphism `R^(τ) ≅ R^(ι)`. -/
-structure IsCofiniteInverse [DecidableEq ι] [DecidableEq τ] (K : Matrix τ ι R)
-    (J : Matrix ι τ R) : Prop where
+structure IsCofiniteInverse [DecidableEq ι] [DecidableEq τ] (M : Matrix τ ι R)
+    (N : Matrix ι τ R) : Prop where
   /-- Every column of `K` has finitely many nonzero entries. -/
-  col_finite j : {i | K i j ≠ 0}.Finite
-  /-- `K J = 1`. -/
-  mul_left i k : ∑ᶠ j, K i j * J j k = (1 : Matrix τ τ R) i k
-  /-- `J K = 1`. -/
-  mul_right i k : ∑ᶠ j, J i j * K j k = (1 : Matrix ι ι R) i k
+  col_finite j : {i | M i j ≠ 0}.Finite
+  /-- `M N = 1`. -/
+  mul_left i k : ∑ᶠ j, M i j * N j k = (1 : Matrix τ τ R) i k
+  /-- `N M = 1`. -/
+  mul_right i k : ∑ᶠ j, N i j * M j k = (1 : Matrix ι ι R) i k
 
 theorem IsCofiniteInverse.one [DecidableEq τ] : IsCofiniteInverse (1 : Matrix τ τ R) 1 where
   col_finite j := (Set.finite_singleton j).subset fun i hi ↦ by

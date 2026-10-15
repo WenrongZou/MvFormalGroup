@@ -413,6 +413,7 @@ private theorem implicitStep_contract [DecidableEq τ]
 
 variable [DecidableEq τ] [DecidableEq ι] (hF0 : ∀ i, constantCoeff (F i) = 0) (hF : HasSubst F)
   (hK : Matrix.IsCofiniteInverse K (implicitJacobian F))
+/- `Matrix.IsCofiniteInvertible J`. -/
 
 /- Include these three assumption in the following theorems. -/
 include hF0 hF hK
