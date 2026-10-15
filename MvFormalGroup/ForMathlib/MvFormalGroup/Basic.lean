@@ -34,11 +34,15 @@ namespace MvFormalGroup
 
 variable {R : Type*} [CommRing R] {σ τ : Type*}
 
+#check Function.uncurry
+#check Function.curry
+
 /-- For finite coordinate families, zero constant terms suffice for paired substitution.
 For arbitrary indices, use `MvPowerSeries.HasSubst.pair`. -/
 lemma hasSubst_pair [Finite σ] {x y : σ → MvPowerSeries τ R}
     (hx : ∀ i, constantCoeff (x i) = 0) (hy : ∀ i, constantCoeff (y i) = 0) :
     HasSubst (Function.uncurry ![x, y]) :=
+  /- Here `![x, y] : Fin 2 → σ → MvPowerSeries τ R`. -/
   hasSubst_of_constantCoeff_zero fun ⟨b, i⟩ => by fin_cases b <;> simp [hx, hy]
 
 lemma constantCoeff_subst_pair [Finite σ] {f : σ → MvPowerSeries (Fin 2 × σ) R}
@@ -162,7 +166,7 @@ theorem two_le_order_subst_sub {τ : Type*} {x y : σ → MvPowerSeries τ R}
       rw [map_sub, F.coeff_eq_of_degree_lt_two i (d := single s 1) (by simp), sub_self])
   rw [subst_zero_of_constantCoeff_zero (by simp [F.zero_constantCoeff]), sub_zero,
     subst_sub hp, subst_add hp, subst_X hp, subst_X hp] at h
-  simpa using h
+  simpa [one_add_one_eq_two] using h
 
 /-- The family of series `F(X, 0)`. -/
 abbrev Xzero : σ → MvPowerSeries σ R := fun i ↦ (F.toPowerSeries i).subst (uncurry ![X, 0])

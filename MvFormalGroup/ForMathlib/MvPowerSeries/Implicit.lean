@@ -5,6 +5,11 @@ Authors: Wenrong Zou
 -/
 module
 
+-- Superseded by `ImplicitInfinite.lean`: the finite case is `MvPowerSeries.implicitFunction`
+-- with `K = J⁻¹` (`MvPowerSeries.existsUnique_implicitFunction_of_isUnit_det`).
+-- The previous development is kept below, commented out.
+
+/-
 public import MvFormalGroup.ForMathlib.MvPowerSeries.Substitution
 public import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 public import Mathlib.RingTheory.MvPowerSeries.Rename
@@ -363,3 +368,4 @@ theorem existsUnique_implicitFunctionLeft_of_isUnit_det (F : τ → MvPowerSerie
 end Matrix
 
 end MvPowerSeries
+-/

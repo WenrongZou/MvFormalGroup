@@ -7,6 +7,7 @@ module
 
 public import Mathlib.Algebra.BigOperators.Finprod
 public import Mathlib.Data.Matrix.Mul
+public import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 
 /-!
 # Two-sided inverses of column-finite matrices
@@ -23,6 +24,8 @@ inverse of `J`, with products written as `finsum`.
 * `Matrix.IsCofiniteInverse.one`: the identity matrix is its own cofinite inverse.
 * `Matrix.IsCofiniteInverse.of_isUnit`: for a finite index type, the inverse of an invertible
   matrix is a cofinite inverse.
+* `Matrix.IsCofiniteInverse.of_isUnit_det`: for a finite index type, if `J` has invertible
+  determinant, then the nonsingular inverse `J⁻¹` is a cofinite inverse.
 -/
 
 @[expose] public section
@@ -71,5 +74,13 @@ theorem IsCofiniteInverse.of_isUnit [Fintype τ] [DecidableEq τ] {J : Matrix τ
     have : J * (↑hJ.unit⁻¹ : Matrix τ τ R) = 1 := by
       simpa only [hJ.unit_spec] using hJ.unit.mul_inv
     rw [finsum_eq_sum_of_fintype, ← Matrix.mul_apply, this]
+
+/-- For a finite index type, if `J` has invertible determinant, then the nonsingular inverse
+`J⁻¹` is a cofinite inverse. -/
+theorem IsCofiniteInverse.of_isUnit_det {R : Type*} [CommRing R] [Fintype τ] [DecidableEq τ]
+    {J : Matrix τ τ R} (hJ : IsUnit J.det) : IsCofiniteInverse J⁻¹ J where
+  col_finite _ := Set.toFinite _
+  mul_left i k := by rw [finsum_eq_sum_of_fintype, ← Matrix.mul_apply, J.nonsing_inv_mul hJ]
+  mul_right i k := by rw [finsum_eq_sum_of_fintype, ← Matrix.mul_apply, J.mul_nonsing_inv hJ]
 
 end Matrix
