@@ -56,8 +56,7 @@ lemma constantCoeff_subst_pair [Finite σ] {f : σ → MvPowerSeries (Fin 2 × �
 end MvFormalGroup
 
 /-- A formal group law over a commutative ring `R` with (possibly infinite) coordinate
-index `σ`, following Hazewinkel (9.6.1). The axiom `coeff_finite` is (9.6.3); it
-ensures that the substitutions in `assoc` are legitimate. -/
+index `σ`. -/
 @[ext]
 structure MvFormalGroup (σ : Type*) (R : Type*) [CommRing R] [DecidableEq σ] where
   /-- The coordinate power series `F(i)(X, Y)`. -/
