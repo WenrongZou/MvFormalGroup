@@ -8,13 +8,16 @@ module
 public import Mathlib.RingTheory.MvPowerSeries.Substitution
 public import Mathlib.Data.Finsupp.Multiset
 public import Mathlib.Basic.Finite.Sum
+public import Mathlib.Order.Filter.TendstoCofinite
 
 /-!
 # Substitutable families and total-degree estimates
 
-The family operations (`HasSubst.comp_injective`, `HasSubst.uncurry`, `HasSubst.pair`, and
-`HasSubst.sumElim`) apply to arbitrary variable sets. The total-degree estimates below use
-`truncTotal` and are used in the finite-variable formal implicit function theorem.
+The family operations (`HasSubst.comp_tendstoCofinite`, `HasSubst.comp_injective`,
+`HasSubst.uncurry`, `HasSubst.curry`, `HasSubst.pair`, and `HasSubst.sumElim`) apply to arbitrary
+variable sets.
+The total-degree estimates below use `truncTotal` and are used in the finite-variable formal
+implicit function theorem.
 -/
 
 @[expose] public section
@@ -27,11 +30,18 @@ namespace MvPowerSeries
 
 variable {R : Type*} [CommRing R] {ι σ τ υ : Type*}
 
+/-- Reindexing a substitutable family along a map with finite fibres keeps it substitutable.
+This generalizes `MvPowerSeries.HasSubst.X_comp`, the case `a = X`. -/
+theorem HasSubst.comp_tendstoCofinite {a : σ → MvPowerSeries τ R} (ha : HasSubst a)
+    (f : ι → σ) [Filter.TendstoCofinite f] : HasSubst (a ∘ f) where
+  const_coeff i := ha.const_coeff (f i)
+  coeff_zero d := Filter.TendstoCofinite.finite_preimage f (ha.coeff_zero d)
+
 /-- Reindexing a substitutable family along an injective map keeps it substitutable. -/
 theorem HasSubst.comp_injective {a : σ → MvPowerSeries τ R} (ha : HasSubst a)
-    {f : ι → σ} (hf : Injective f) : HasSubst (a ∘ f) where
-  const_coeff i := ha.const_coeff (f i)
-  coeff_zero d := (ha.coeff_zero d).preimage hf.injOn
+    {f : ι → σ} (hf : Injective f) : HasSubst (a ∘ f) :=
+  have := Filter.tendstoCofinite_of_injective hf
+  ha.comp_tendstoCofinite f
 
 /-- Stacking finitely many substitutable families gives a substitutable family. -/
 theorem HasSubst.uncurry [Finite ι] {a : ι → σ → MvPowerSeries τ R}
@@ -47,19 +57,27 @@ theorem HasSubst.pair {x y : σ → MvPowerSeries τ R} (hx : HasSubst x) (hy : 
     HasSubst (Function.uncurry ![x, y]) :=
   HasSubst.uncurry fun b ↦ by fin_cases b <;> assumption
 
+/-- Each block of a substitutable family is substitutable. Unlike `HasSubst.uncurry`, this
+needs no finiteness of `ι`. -/
+theorem HasSubst.curry {a : ι × σ → MvPowerSeries τ R} (ha : HasSubst a) (k : ι) :
+    HasSubst (Function.curry a k) :=
+  ha.comp_injective (Prod.mk_right_injective k)
+
+/-- For finitely many blocks, a stacked family is substitutable if and only if each block is. -/
+theorem hasSubst_uncurry_iff [Finite ι] {a : ι → σ → MvPowerSeries τ R} :
+    HasSubst (Function.uncurry a) ↔ ∀ k, HasSubst (a k) :=
+  ⟨fun ha k ↦ ha.curry k, HasSubst.uncurry⟩
+
 /-- One block of variables is substitutable. -/
 theorem HasSubst.curry_X (b : ι) : HasSubst (Function.curry (X (R := R) (σ := ι × σ)) b) :=
-  HasSubst.X.comp_injective (Prod.mk_right_injective b)
+  HasSubst.X.curry b
 
 /-- Two substitutable families on disjoint index sets combine to a substitutable family. -/
 theorem HasSubst.sumElim {a : σ → MvPowerSeries υ R} {b : τ → MvPowerSeries υ R}
     (ha : HasSubst a) (hb : HasSubst b) : HasSubst (Sum.elim a b) where
-  const_coeff := by
-    rintro (s | t)
-    exacts [ha.const_coeff s, hb.const_coeff t]
-  coeff_zero d := by
-    refine (((ha.coeff_zero d).image Sum.inl).union ((hb.coeff_zero d).image Sum.inr)).subset ?_
-    rintro (s | t) h <;> simpa
+  const_coeff := by rintro (s | t) <;> simp [ha.const_coeff, hb.const_coeff]
+  coeff_zero d := (((ha.coeff_zero d).image .inl).union ((hb.coeff_zero d).image .inr)).subset
+    <| by rintro (s | t) h <;> simpa
 
 /-- Substitution into a pair of families commutes with a further admissible substitution. -/
 theorem subst_pair_subst (f : MvPowerSeries (Fin 2 × σ) R)

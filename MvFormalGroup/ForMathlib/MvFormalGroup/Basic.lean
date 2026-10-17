@@ -14,7 +14,7 @@ public import MvFormalGroup.ForMathlib.MvPowerSeries.ImplicitInfinite
 A formal group law over `R` has an arbitrary coordinate index `σ`, which may be infinite.
 Variables are indexed by `Fin 2 × σ`: `(0, i)` denotes `Xᵢ` and `(1, i)` denotes `Yᵢ`.
 The linear part is `X + Y`, and the law is associative. In addition, each monomial
-occurs in only finitely many coordinate series (`coeff_finite`). Together with zero
+occurs in only finitely many coordinate series (`coeff_zero`). Together with zero
 constant terms, this gives `MvPowerSeries.HasSubst`, making composition well-defined.
 For finite `σ`, the extra condition is automatic.
 
@@ -33,9 +33,6 @@ open MvPowerSeries Finsupp Function
 namespace MvFormalGroup
 
 variable {R : Type*} [CommRing R] {σ τ : Type*}
-
-#check Function.uncurry
-#check Function.curry
 
 /-- For finite coordinate families, zero constant terms suffice for paired substitution.
 For arbitrary indices, use `MvPowerSeries.HasSubst.pair`. -/
@@ -68,7 +65,7 @@ structure MvFormalGroup (σ : Type*) (R : Type*) [CommRing R] [DecidableEq σ] w
   /-- The coefficient of `Yⱼ` in `F(i)` is the Kronecker delta. -/
   lin_coeff_Y i j : coeff (single (1, j) 1) (toPowerSeries i) = if j = i then 1 else 0
   /-- (9.6.3): every monomial `XᵐYⁿ` occurs in only finitely many `F(i)`. -/
-  coeff_finite d : {i | coeff d (toPowerSeries i) ≠ 0}.Finite
+  coeff_zero d : {i | coeff d (toPowerSeries i) ≠ 0}.Finite
   /-- (9.6.4): `F(F(X, Y), Z) = F(X, F(Y, Z))`, coordinate by coordinate. -/
   assoc i :
     let V : Fin 3 → σ → MvPowerSeries (Fin 3 × σ) R := curry X
@@ -103,7 +100,7 @@ theorem coeff_eq_of_degree_lt_two (i : σ) {d : Fin 2 × σ →₀ ℕ} (hd : d.
 /-- Zero constant terms and (9.6.3) say exactly that the coordinates can be substituted. -/
 theorem hasSubst : HasSubst F.toPowerSeries where
   const_coeff i := by simp [F.zero_constantCoeff]
-  coeff_zero := F.coeff_finite
+  coeff_zero := F.coeff_zero
 
 /-- `F(x, y)` is substitutable whenever `x` and `y` are. -/
 theorem hasSubst_subst_pair {τ : Type*} {x y : σ → MvPowerSeries τ R}
@@ -274,7 +271,7 @@ def additive (σ : Type*) (R : Type*) [CommRing R] [DecidableEq σ] : MvFormalGr
   zero_constantCoeff _ := by simp
   lin_coeff_X i j := by simp [coeff_index_single_X]
   lin_coeff_Y i j := by simp [coeff_index_single_X]
-  coeff_finite d := ((HasSubst.curry_X (R := R) (σ := σ) 0).add (.curry_X 1)).coeff_zero d
+  coeff_zero d := ((HasSubst.curry_X (R := R) (σ := σ) 0).add (.curry_X 1)).coeff_zero d
   assoc i := by
     have hv (b : Fin 3) := HasSubst.curry_X (R := R) (σ := σ) b
     simp only [subst_X_add_X (hv _) (hv _)]
