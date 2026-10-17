@@ -9,15 +9,16 @@ public import Mathlib.RingTheory.MvPowerSeries.Substitution
 public import Mathlib.Data.Finsupp.Multiset
 public import Mathlib.Basic.Finite.Sum
 public import Mathlib.Order.Filter.TendstoCofinite
+public import MvFormalGroup.ForMathlib.MvPowerSeries.Order
 
 /-!
 # Substitutable families and total-degree estimates
 
 The family operations (`HasSubst.comp_tendstoCofinite`, `HasSubst.comp_injective`,
 `HasSubst.uncurry`, `HasSubst.curry`, `HasSubst.pair`, and `HasSubst.sumElim`) apply to arbitrary
-variable sets.
-The total-degree estimates below use `truncTotal` and are used in the finite-variable formal
-implicit function theorem.
+variable sets, and so do the order estimates `add_le_weightedOrder_subst_sub` and
+`add_le_order_subst_sub`. The total-degree estimates below use `truncTotal` and are used in the
+finite-variable formal implicit function theorem.
 -/
 
 @[expose] public section
@@ -52,10 +53,10 @@ theorem HasSubst.uncurry [Finite ι] {a : ι → σ → MvPowerSeries τ R}
     rintro ⟨k, s⟩ h
     exact Set.mem_iUnion.mpr ⟨k, s, h, rfl⟩
 
-/-- A pair of substitutable families is substitutable. -/
+/-- Two substitutable families combine to a substitutable family indexed by `Fin 2 × σ`. -/
 theorem HasSubst.pair {x y : σ → MvPowerSeries τ R} (hx : HasSubst x) (hy : HasSubst y) :
     HasSubst (Function.uncurry ![x, y]) :=
-  HasSubst.uncurry fun b ↦ by fin_cases b <;> assumption
+  .uncurry <| Fin.forall_fin_two.mpr ⟨hx, hy⟩
 
 /-- Each block of a substitutable family is substitutable. Unlike `HasSubst.uncurry`, this
 needs no finiteness of `ι`. -/
@@ -79,16 +80,68 @@ theorem HasSubst.sumElim {a : σ → MvPowerSeries υ R} {b : τ → MvPowerSeri
   coeff_zero d := (((ha.coeff_zero d).image .inl).union ((hb.coeff_zero d).image .inr)).subset
     <| by rintro (s | t) h <;> simpa
 
-/-- Substitution into a pair of families commutes with a further admissible substitution. -/
-theorem subst_pair_subst (f : MvPowerSeries (Fin 2 × σ) R)
-    (x y : σ → MvPowerSeries τ R) {a : τ → MvPowerSeries υ R}
-    (hxy : HasSubst (uncurry ![x, y])) (ha : HasSubst a) :
-    (f.subst (uncurry ![x, y])).subst a =
-      f.subst (uncurry ![fun i ↦ (x i).subst a, fun i ↦ (y i).subst a]) := by
-  rw [subst_comp_subst_apply hxy ha]
-  congr 1
-  funext ⟨b, i⟩
-  fin_cases b <;> rfl
+/-- Substitution preserves substitutability; `HasSubst.comp` stated with `subst`. -/
+theorem HasSubst.subst {a : σ → MvPowerSeries τ R} {b : τ → MvPowerSeries υ R}
+    (ha : HasSubst a) (hb : HasSubst b) : HasSubst (fun s ↦ (a s).subst b) := by
+  convert ha.comp hb
+  exact (substAlgHom_apply _ _).symm
+
+theorem HasSubst.sub {a b : σ → MvPowerSeries τ R} (ha : HasSubst a) (hb : HasSubst b) :
+    HasSubst (a - b) :=
+  (sub_mem ha hb : a - b ∈ hasSubstIdeal)
+
+theorem HasSubst.neg {a : σ → MvPowerSeries τ R} (ha : HasSubst a) : HasSubst (-a) :=
+  (neg_mem ha : -a ∈ hasSubstIdeal)
+
+section Order
+
+variable {S : Type*} [CommRing S] [Algebra R S] {a b : σ → MvPowerSeries τ S}
+
+/-- Substituting two families that agree up to weighted order `n`, and have weighted order at
+least `k`, gives series that agree up to weighted order `n + k`, provided `f` has no linear term
+in a variable where the families differ. No finiteness of the variables is needed. -/
+theorem add_le_weightedOrder_subst_sub (w : τ → ℕ) {n k : ℕ∞} {f : MvPowerSeries σ R}
+    (ha : HasSubst a) (hb : HasSubst b)
+    (hak : ∀ s, k ≤ (a s).weightedOrder w) (hbk : ∀ s, k ≤ (b s).weightedOrder w)
+    (h : ∀ s, n ≤ (a s - b s).weightedOrder w)
+    (hf : ∀ s, a s ≠ b s → coeff (Finsupp.single s 1) f = 0) :
+    n + k ≤ (f.subst a - f.subst b).weightedOrder w := by
+  refine le_weightedOrder w fun e he ↦ ?_
+  rw [map_sub, sub_eq_zero, coeff_subst ha, coeff_subst hb]
+  refine finsum_congr fun d ↦ ?_
+  obtain hd | hd | hd : d.degree = 0 ∨ d.degree = 1 ∨ 2 ≤ d.degree := by omega
+  · simp [d.degree_eq_zero_iff.mp hd]
+  · obtain ⟨s, rfl⟩ := (Finsupp.sum_eq_one_iff d).mp hd
+    by_cases hs : a s = b s
+    · simp [hs]
+    · simp [hf s hs]
+  · congr 1
+    -- one factor `c s` for each of the `d s` occurrences of the variable `s`
+    have hprod (c : σ → MvPowerSeries τ S) :
+        d.prod (fun s k ↦ c s ^ k) = ∏ x ∈ d.support.sigma fun s ↦ Finset.range (d s), c x.1 := by
+      rw [Finsupp.prod, Finset.prod_sigma]
+      simp
+    have hd : 2 ≤ (d.support.sigma fun s ↦ Finset.range (d s)).card := by
+      simpa [Finset.card_sigma, Finsupp.degree_apply] using hd
+    rw [hprod, hprod]
+    refine coeff_eq_of_lt_weightedOrder_sub w (he.trans_le (le_trans ?_
+      (add_nsmul_le_weightedOrder_prod_sub_prod w (fun x _ ↦ hak x.1) (fun x _ ↦ hbk x.1)
+        fun x _ ↦ h x.1)))
+    obtain ⟨m, hm⟩ := Nat.exists_eq_add_of_le hd
+    rw [hm, show 2 + m - 1 = m + 1 by omega, succ_nsmul']
+    exact add_le_add le_rfl le_self_add
+
+/-- Substituting two families that agree up to order `n`, and have order at least `k`, gives
+series that agree up to order `n + k`, provided `f` has no linear term in a variable where the
+families differ. No finiteness of the variables is needed. -/
+theorem add_le_order_subst_sub {n k : ℕ∞} {f : MvPowerSeries σ R}
+    (ha : HasSubst a) (hb : HasSubst b)
+    (hak : ∀ s, k ≤ (a s).order) (hbk : ∀ s, k ≤ (b s).order) (h : ∀ s, n ≤ (a s - b s).order)
+    (hf : ∀ s, a s ≠ b s → coeff (Finsupp.single s 1) f = 0) :
+    n + k ≤ (f.subst a - f.subst b).order :=
+  add_le_weightedOrder_subst_sub _ ha hb hak hbk h hf
+
+end Order
 
 variable [Finite τ]
 

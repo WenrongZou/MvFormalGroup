@@ -34,11 +34,10 @@ the iterates of `a ↦ a - (K F)(X, a)`. The matrix `K` acts on a family of powe
 coefficientwise (`MvPowerSeries.finsumMulVec`, built from `Matrix.finsumMulVec`); each
 coefficient is a finite sum. Agreement
 below degree `n` is expressed as `n ≤ (f - g).order`, since `truncTotal` needs finitely many
-variables.
+variables; each step improves it by one degree (`MvPowerSeries.add_le_order_subst_sub`).
 
 ## Main results
 
-* `MvPowerSeries.succ_le_order_subst_sub`: substitution improves agreement by one degree.
 * `MvPowerSeries.existsUnique_implicitFunction`: the implicit function theorem.
 * `MvPowerSeries.existsUnique_implicitFunctionLeft`: the version solving for the first variable
   block.
@@ -56,104 +55,6 @@ open Finsupp Function
 namespace MvPowerSeries
 
 variable {R : Type*} [CommRing R] {ι σ τ υ : Type*}
-
-/-- Substitution preserves substitutability; `HasSubst.comp` stated with `subst`. -/
-theorem HasSubst.subst {a : σ → MvPowerSeries τ R} {b : τ → MvPowerSeries υ R}
-    (ha : HasSubst a) (hb : HasSubst b) : HasSubst (fun s ↦ (a s).subst b) := by
-  convert ha.comp hb
-  exact (substAlgHom_apply _ _).symm
-
-theorem HasSubst.sub {a b : σ → MvPowerSeries τ R} (ha : HasSubst a) (hb : HasSubst b) :
-    HasSubst (a - b) :=
-  (sub_mem ha hb : a - b ∈ hasSubstIdeal)
-
-theorem HasSubst.neg {a : σ → MvPowerSeries τ R} (ha : HasSubst a) : HasSubst (-a) :=
-  (neg_mem ha : -a ∈ hasSubstIdeal)
-
-/-! ### Agreement below a given degree
-
-For an arbitrary set of variables, `truncTotal` is unavailable, so agreement of `f` and `g`
-in degrees below `n` is expressed as `n ≤ (f - g).order`. -/
-
-section Order
-
-/-- A lower bound on the order of a difference gives agreement of low-degree coefficients. -/
-theorem coeff_eq_of_le_order_sub {f g : MvPowerSeries σ R} {n : ℕ}
-    (h : n ≤ (f - g).order) {d : σ →₀ ℕ} (hd : d.degree < n) :
-    coeff d f = coeff d g := by
-  rw [← sub_eq_zero, ← map_sub]
-  exact coeff_of_lt_order ((Nat.cast_lt.mpr hd).trans_le h)
-
-private theorem prod_toMultiset_map (d : σ →₀ ℕ) (a : σ → MvPowerSeries τ R) :
-    (d.toMultiset.map a).prod = d.prod (fun i k ↦ a i ^ k) := by
-  classical
-  induction d using Finsupp.induction with
-  | zero => simp [Finsupp.toMultiset_zero]
-  | @single_add i k d hi hk ih =>
-    simp [Finsupp.toMultiset_add, ih, Finsupp.prod_add_index, pow_add,
-      Multiset.map_nsmul, Multiset.prod_nsmul]
-
-private theorem constantCoeff_multiset_prod {a : σ → MvPowerSeries τ R}
-    (ha : ∀ i, constantCoeff (a i) = 0) {s : Multiset σ} (hs : s ≠ 0) :
-    constantCoeff (s.map a).prod = 0 := by
-  induction s using Multiset.induction_on with
-  | empty => exact (hs rfl).elim
-  | cons i t ih => simp [ha]
-
-variable {a b : σ → MvPowerSeries τ R} {n : ℕ}
-
-private theorem le_order_multiset_prod_sub (h : ∀ s, n ≤ (a s - b s).order)
-    (m : Multiset σ) : n ≤ ((m.map a).prod - (m.map b).prod).order := by
-  induction m using Multiset.induction_on with
-  | empty => simp
-  | cons s m ih =>
-    have : a s * (m.map a).prod - b s * (m.map b).prod =
-        a s * ((m.map a).prod - (m.map b).prod) + (a s - b s) * (m.map b).prod := by ring
-    simp only [Multiset.map_cons, Multiset.prod_cons, this]
-    exact (le_min ((ih.trans le_add_self).trans le_order_mul)
-      (((h s).trans le_self_add).trans le_order_mul)).trans min_order_le_add
-
-private theorem succ_le_order_multiset_prod_sub (ha : ∀ s, constantCoeff (a s) = 0)
-    (hb : ∀ s, constantCoeff (b s) = 0) (h : ∀ s, n ≤ (a s - b s).order)
-    (m : Multiset σ) (hm : 2 ≤ m.card) :
-    n + 1 ≤ ((m.map a).prod - (m.map b).prod).order := by
-  induction m using Multiset.induction_on with
-  | empty => simp at hm
-  | cons s m _ =>
-    have hm0 : m ≠ 0 := by rintro rfl; simp at hm
-    have : a s * (m.map a).prod - b s * (m.map b).prod =
-        a s * ((m.map a).prod - (m.map b).prod) + (a s - b s) * (m.map b).prod := by ring
-    simp only [Multiset.map_cons, Multiset.prod_cons, this]
-    refine (le_min ?_ ?_).trans min_order_le_add
-    · rw [add_comm]
-      exact (add_le_add (one_le_order_iff_constCoeff_eq_zero.mpr (ha s))
-        (le_order_multiset_prod_sub h m)).trans le_order_mul
-    · exact (add_le_add (h s) (one_le_order_iff_constCoeff_eq_zero.mpr
-        (constantCoeff_multiset_prod hb hm0))).trans le_order_mul
-
-/-- Substituting two families that agree below degree `n` gives series agreeing below
-degree `n + 1`, provided `f` has no linear term in a variable where the families differ.
-No finiteness of the variables is needed. -/
-theorem succ_le_order_subst_sub {f : MvPowerSeries σ R} (ha : HasSubst a) (hb : HasSubst b)
-    (ha0 : ∀ s, constantCoeff (a s) = 0) (hb0 : ∀ s, constantCoeff (b s) = 0)
-    (h : ∀ s, n ≤ (a s - b s).order)
-    (hf : ∀ s, a s ≠ b s → coeff (single s 1) f = 0) :
-    n + 1 ≤ (f.subst a - f.subst b).order := by
-  refine nat_le_order fun e he ↦ ?_
-  rw [map_sub, sub_eq_zero, coeff_subst ha, coeff_subst hb]
-  refine finsum_congr fun d ↦ ?_
-  obtain hd | hd | hd : d.degree = 0 ∨ d.degree = 1 ∨ 2 ≤ d.degree := by omega
-  · simp [d.degree_eq_zero_iff.mp hd]
-  · obtain ⟨s, rfl⟩ := (Finsupp.sum_eq_one_iff d).mp hd
-    by_cases hs : a s = b s
-    · simp [hs]
-    · simp [hf s hs]
-  · congr 1
-    rw [← prod_toMultiset_map, ← prod_toMultiset_map]
-    refine coeff_eq_of_le_order_sub (succ_le_order_multiset_prod_sub ha0 hb0 h _ ?_) he
-    simpa only [Finsupp.card_toMultiset, Finsupp.degree_apply, Finsupp.sum, id_eq] using hd
-
-end Order
 
 /-! ### Coefficientwise fixed points
 
@@ -203,7 +104,8 @@ private theorem le_order_iterLimit_sub (n : ℕ) (i : ι) :
   refine nat_le_order fun d hd ↦ ?_
   rw [map_sub, sub_eq_zero]
   obtain ⟨m, rfl⟩ := Nat.exists_eq_add_of_le' hd
-  exact (coeff_eq_of_le_order_sub (le_order_iterate_sub T hT0 hT m _ i) (lt_add_one _)).symm
+  exact (coeff_eq_of_lt_order_sub
+    ((Nat.cast_lt.mpr (lt_add_one _)).trans_le (le_order_iterate_sub T hT0 hT m _ i))).symm
 
 include hT0 in
 private theorem iterLimit_admissible :
@@ -221,8 +123,9 @@ private theorem map_iterLimit : T (iterLimit T) = iterLimit T := by
   have h := hT _ _ _ (iterLimit_admissible T hT0) (iterate_admissible T hT0 _)
     (le_order_iterLimit_sub T hT0 hT (d.degree + 1)) i
   rw [← iterate_succ_apply' T] at h
-  rw [coeff_eq_of_le_order_sub h (by omega),
-    coeff_eq_of_le_order_sub (le_order_iterLimit_sub T hT0 hT (d.degree + 1 + 1) i) (by omega)]
+  rw [coeff_eq_of_lt_order_sub ((Nat.cast_lt.mpr (by omega)).trans_le h),
+    coeff_eq_of_lt_order_sub ((Nat.cast_lt.mpr (by omega)).trans_le
+      (le_order_iterLimit_sub T hT0 hT (d.degree + 1 + 1) i))]
 
 include hT0 hT in
 private theorem eq_iterLimit (b : ι → MvPowerSeries τ R)
@@ -236,7 +139,7 @@ private theorem eq_iterLimit (b : ι → MvPowerSeries τ R)
         hT n b (iterLimit T) hb (iterLimit_admissible T hT0) ih i
   funext i
   ext d
-  exact coeff_eq_of_le_order_sub (h _ i) (lt_add_one _)
+  exact coeff_eq_of_lt_order_sub ((Nat.cast_lt.mpr (lt_add_one _)).trans_le (h _ i))
 
 end FixedPoint
 
@@ -402,7 +305,10 @@ private theorem implicitStep_contract [DecidableEq τ]
   have hpb := HasSubst.X.sumElim hb.1
   have key : n + 1 ≤ (subst (Sum.elim X a) (X (Sum.inr i) - finsumMulVec K F i) -
     subst (Sum.elim X b) (X (Sum.inr i) - finsumMulVec K F i)).order := by
-    refine succ_le_order_subst_sub hpa hpb (by simp [ha]) (by simp [hb]) (by simp [h]) ?_
+    refine add_le_order_subst_sub hpa hpb
+      (fun s ↦ one_le_order_iff_constCoeff_eq_zero.mpr (by rcases s with s | s <;> simp [ha.2]))
+      (fun s ↦ one_le_order_iff_constCoeff_eq_zero.mpr (by rcases s with s | s <;> simp [hb.2]))
+      (by simp [h]) ?_
     rintro (s | k) hs
     · simp at hs
     · simp_rw [map_sub, coeff_finsumMulVec, ← implicitJacobian_apply, hKJ i k]

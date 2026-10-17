@@ -112,7 +112,7 @@ theorem eq_inv (a : σ → MvPowerSeries σ R) (ha : HasSubst a)
 theorem inv_left_subst {τ : Type*} {a : σ → MvPowerSeries τ R} (ha : HasSubst a) (i : σ) :
     (F.toPowerSeries i).subst (uncurry ![fun j ↦ (F.inv j).subst a, a]) = 0 := by
   have h := congrArg (subst a) (F.inv_left i)
-  rw [subst_pair_subst _ _ _ (F.hasSubst_inv.pair .X) ha] at h
+  rw [subst_pair_subst _ F.hasSubst_inv .X ha] at h
   simpa only [subst_X ha, ← substAlgHom_apply ha, map_zero] using h
 
 /-- Applying the inverse twice gives the identity: `i(i(X)) = X`. -/
