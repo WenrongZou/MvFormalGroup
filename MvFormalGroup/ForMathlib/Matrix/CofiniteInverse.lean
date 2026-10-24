@@ -101,6 +101,32 @@ theorem IsCofiniteInverse.symm {K : Matrix τ ι R} {J : Matrix ι τ R}
 def IsCofiniteInvertible (J : Matrix ι τ R) : Prop :=
   ∃ K : Matrix τ ι R, IsCofiniteInverse K J
 
+#check IsUnit
+
+/- IsUnit,
+
+  σ →₀ α ≃ σ → α.
+
+  Instance {σ : Type*} [Fintype σ] : IsFinsuppMatrix (M : Matrix σ σ R) := sorry
+
+  `∑' M i j * N j k` make sense (finsupp → converge)
+
+  Main: to define ring structure on `(Matrix σ σ R)`
+
+  instance : Mul (Matrix σ τ R) := _
+
+  `Monoid`, `HMul`, `IsBilinearMap` (1 / (i+j)^ 2)_{ij} `Summable`
+
+  Prop : ∀ i k, Summable ∑' j,  M i j * N j k
+  ∑' ∑' = ∑' ∑' summable_swap
+
+  `MeasureTheory.convolution`
+
+  application:  Witt vector here infinite formal group
+
+-/
+
+
 theorem IsCofiniteInverse.isCofiniteInvertible {K : Matrix τ ι R} {J : Matrix ι τ R}
     (hK : IsCofiniteInverse K J) : J.IsCofiniteInvertible :=
   ⟨K, hK⟩

@@ -46,10 +46,16 @@ structure IsCofiniteInverse [DecidableEq ι] [DecidableEq τ] (M : Matrix τ ι 
     (N : Matrix ι τ R) : Prop where
   /-- Every column of `K` has finitely many nonzero entries. -/
   col_finite j : {i | M i j ≠ 0}.Finite
+  /- replace this using `Function.support`. -/
   /-- `M N = 1`. -/
   mul_left i k : ∑ᶠ j, M i j * N j k = (1 : Matrix τ τ R) i k
   /-- `N M = 1`. -/
   mul_right i k : ∑ᶠ j, N i j * M j k = (1 : Matrix ι ι R) i k
+
+/- IsFinsupp.
+`Matrix.mulVec : (n → α) → (m → α) ` here we need finiteness of `n`,
+`Matrix.mulVec' : (n →₀ α) →ₗ (m →₀ α)`
+ -/
 
 theorem IsCofiniteInverse.one [DecidableEq τ] : IsCofiniteInverse (1 : Matrix τ τ R) 1 where
   col_finite j := (Set.finite_singleton j).subset fun i hi ↦ by
