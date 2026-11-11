@@ -12,7 +12,8 @@ public import MvFormalGroup.ForMathlib.MvPowerSeries.ImplicitInfinite
 # Inverses of multidimensional formal group laws
 
 For an arbitrary coordinate index, the inverse is constructed using the formal implicit
-function theorem with cofinite support. Its constant terms vanish, its coordinate family
+function theorem with cofinite support: the Jacobian of the group law in the first block of
+variables is the identity map. Its constant terms vanish, its coordinate family
 is substitutable, and it satisfies both inverse identities. Associativity implies
 `inv_subst_inv` and the right inverse identity; commutativity is not required.
 -/
@@ -52,21 +53,20 @@ private theorem hasSubst_toSumPowerSeries : HasSubst F.toSumPowerSeries := by
   rw [h]
   exact F.hasSubst.subst (HasSubst.X_comp _)
 
+/-- The Jacobian of the group law in the first block of variables is the identity. -/
 private theorem implicitJacobianLeft_toSumPowerSeries :
-    implicitJacobianLeft F.toSumPowerSeries = 1 := by
-  ext i j
+    implicitJacobianLeft F.toSumPowerSeries F.hasSubst_toSumPowerSeries = LinearMap.id := by
+  ext j i
   have h : coeff (single (Sum.inl j) 1) (F.toSumPowerSeries i) =
       coeff (single (0, j) 1) (F.toPowerSeries i) := by
     simpa [sumVarsEquiv, toSumPowerSeries] using
       coeff_embDomain_rename (sumVarsEquiv σ).toEmbedding (F.toPowerSeries i) (single (0, j) 1)
-  change coeff (single (Sum.inl j) 1) (F.toSumPowerSeries i) = _
-  rw [h, F.lin_coeff_X]
-  simp [Matrix.one_apply, eq_comm]
+  simp [h, F.lin_coeff_X_eq_ite, Finsupp.single_apply]
 
-private theorem isCofiniteInverse_one :
-    Matrix.IsCofiniteInverse 1 (implicitJacobianLeft F.toSumPowerSeries) := by
+private theorem bijective_implicitJacobianLeft :
+    Bijective (implicitJacobianLeft F.toSumPowerSeries F.hasSubst_toSumPowerSeries) := by
   rw [implicitJacobianLeft_toSumPowerSeries]
-  exact .one
+  exact bijective_id
 
 private theorem subst_toSumPowerSeries {a b : σ → MvPowerSeries σ R} (ha : HasSubst a)
     (hb : HasSubst b) (i : σ) :
@@ -81,31 +81,32 @@ private theorem subst_toSumPowerSeries {a b : σ → MvPowerSeries σ R} (ha : H
 constant terms. -/
 @[no_expose]
 def inv : σ → MvPowerSeries σ R :=
-  implicitFunctionLeft F.toSumPowerSeries 1
+  implicitFunctionLeft F.toSumPowerSeries F.hasSubst_toSumPowerSeries
+    F.bijective_implicitJacobianLeft
 
 @[simp]
 theorem constantCoeff_inv (i : σ) : constantCoeff (F.inv i) = 0 :=
   constantCoeff_implicitFunctionLeft F.constantCoeff_toSumPowerSeries
-    F.hasSubst_toSumPowerSeries F.isCofiniteInverse_one i
+    F.hasSubst_toSumPowerSeries F.bijective_implicitJacobianLeft i
 
 /-- The inverse satisfies the cofinite condition, so it can be substituted. -/
 theorem hasSubst_inv : HasSubst F.inv :=
   HasSubst.implicitFunctionLeft F.constantCoeff_toSumPowerSeries
-    F.hasSubst_toSumPowerSeries F.isCofiniteInverse_one
+    F.hasSubst_toSumPowerSeries F.bijective_implicitJacobianLeft
 
 /-- The inverse is a left inverse: `F(i(X), X) = 0`. -/
 @[simp]
 theorem inv_left (i : σ) : (F.toPowerSeries i).subst (uncurry ![F.inv, X]) = 0 := by
   rw [← F.subst_toSumPowerSeries F.hasSubst_inv .X]
   exact subst_implicitFunctionLeft F.constantCoeff_toSumPowerSeries
-    F.hasSubst_toSumPowerSeries F.isCofiniteInverse_one i
+    F.hasSubst_toSumPowerSeries F.bijective_implicitJacobianLeft i
 
 /-- Any substitutable left inverse with zero constant terms is `F.inv`. -/
 theorem eq_inv (a : σ → MvPowerSeries σ R) (ha : HasSubst a)
     (ha0 : ∀ i, constantCoeff (a i) = 0)
     (h : ∀ i, (F.toPowerSeries i).subst (uncurry ![a, X]) = 0) : a = F.inv :=
   eq_implicitFunctionLeft F.constantCoeff_toSumPowerSeries F.hasSubst_toSumPowerSeries
-    F.isCofiniteInverse_one a ha ha0 fun i ↦ (F.subst_toSumPowerSeries ha .X i).trans (h i)
+    F.bijective_implicitJacobianLeft a ha ha0 fun i ↦ (F.subst_toSumPowerSeries ha .X i).trans (h i)
 
 /-- The left inverse equation after any admissible substitution: `F(i(a), a) = 0`. -/
 @[simp]

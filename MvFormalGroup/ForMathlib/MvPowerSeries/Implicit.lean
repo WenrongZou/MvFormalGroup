@@ -5,8 +5,9 @@ Authors: Wenrong Zou
 -/
 module
 
--- Superseded by `ImplicitInfinite.lean`: the finite case is `MvPowerSeries.implicitFunction`
--- with `K = J⁻¹` (`MvPowerSeries.existsUnique_implicitFunction_of_isUnit_det`).
+-- Superseded by `ImplicitInfinite.lean`: the finite case is
+-- `MvPowerSeries.existsUnique_implicitFunction_of_isUnit_det`, obtained from
+-- `MvPowerSeries.bijective_implicitJacobian_of_isUnit_det`.
 -- The previous development is kept below, commented out.
 
 /-
