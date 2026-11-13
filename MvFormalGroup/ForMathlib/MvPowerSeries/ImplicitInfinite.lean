@@ -195,7 +195,7 @@ theorem subst_mapCoeffFinsupp (L : (ι →₀ R) →ₗ[R] (τ →₀ R)) {v : �
 
 theorem eq_zero_of_mapCoeffFinsupp_eq_zero {L : (ι →₀ R) →ₗ[R] (τ →₀ R)}
     (hL : Function.Injective L) {v : ι → MvPowerSeries σ R}
-    {hv : ∀ d, {i | coeff d (v i) ≠ 0}.Finite} (h : mapCoeffFinsupp L v hv = 0) : v = 0 := by
+    (hv : ∀ d, {i | coeff d (v i) ≠ 0}.Finite) (h : mapCoeffFinsupp L v hv = 0) : v = 0 := by
   ext i d
   have hd : L (coeffFinsupp v hv d) = 0 :=
     Finsupp.ext fun j ↦ congrArg (coeff d) (congrFun h j)
@@ -321,22 +321,18 @@ theorem HasSubst.implicitFunction : HasSubst (implicitFunction F hF hJ) :=
 @[simp]
 theorem subst_implicitFunction (i : ι) :
     (F i).subst (Sum.elim X (implicitFunction F hF hJ)) = 0 := by
+  apply congrFun _ i
   have hp := HasSubst.X.sumElim <| HasSubst.implicitFunction hF0 hF hJ
-  have hG (j : τ) : (mapCoeffFinsupp (LinearEquiv.ofBijective _ hJ).symm.toLinearMap F
-      hF.coeff_zero j).subst (Sum.elim X (implicitFunction F hF hJ)) = 0 := by
-    have h : implicitFunction F hF hJ j -
-        (mapCoeffFinsupp (LinearEquiv.ofBijective _ hJ).symm.toLinearMap F
-          hF.coeff_zero j).subst (Sum.elim X (implicitFunction F hF hJ)) =
-        implicitFunction F hF hJ j :=
-      congrFun (map_iterLimit _ (fun _ ha ↦ implicitStep_admissible hF0 hF ha)
-        (fun n _ _ ha hb h ↦ implicitStep_contract hF
-          (LinearEquiv.ofBijective_symm_apply_apply _) n ha hb h)) j
-    exact sub_eq_self.mp h
-  have h0 := eq_zero_of_mapCoeffFinsupp_eq_zero (LinearEquiv.ofBijective _ hJ).symm.injective
-    (hv := (hF.subst hp).coeff_zero) (funext fun j ↦ by
-      rw [← subst_mapCoeffFinsupp _ hF hp j]
-      exact hG j)
-  exact congrFun h0 i
+  refine eq_zero_of_mapCoeffFinsupp_eq_zero (LinearEquiv.ofBijective _ hJ).symm.injective
+    (hF.subst hp).coeff_zero ?_
+  funext j
+  rw [← subst_mapCoeffFinsupp _ hF hp j]
+  have h : implicitFunction F hF hJ j - (mapCoeffFinsupp (LinearEquiv.ofBijective _ hJ).symm F
+    hF.coeff_zero j).subst (Sum.elim X (implicitFunction F hF hJ)) = implicitFunction F hF hJ j :=
+    congrFun (map_iterLimit _ (fun _ ha ↦ implicitStep_admissible hF0 hF ha)
+      (fun n _ _ ha hb h ↦ implicitStep_contract hF
+        (LinearEquiv.ofBijective_symm_apply_apply _) n ha hb h)) j
+  exact sub_eq_self.mp h
 
 theorem eq_implicitFunction (a : τ → MvPowerSeries σ R) (ha : HasSubst a)
     (ha0 : ∀ i, constantCoeff (a i) = 0) (h : ∀ i, (F i).subst (Sum.elim X a) = 0) :
