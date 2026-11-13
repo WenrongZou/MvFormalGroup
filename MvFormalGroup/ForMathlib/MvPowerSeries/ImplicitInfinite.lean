@@ -259,7 +259,9 @@ theorem implicitJacobian_rename_sumComm {F : ι → MvPowerSeries (τ ⊕ σ) R}
 
 section Implicit
 
-/-- The solution `α` of `F(X, α(X)) = 0` given by `existsUnique_implicitFunction`. -/
+/-- The implicit function, an explicit solution `α` of `F(X, α(X)) = 0`. Let `K` be the inverse of
+the Jacobian, and `T a = a - (K F)(X, a)`. The coefficient of `X^d` in `α` is the coefficient of
+`X^d` in `T^[deg d + 1] 0`. -/
 def implicitFunction (F : ι → MvPowerSeries (σ ⊕ τ) R) (hF : HasSubst F)
     (hJ : Function.Bijective (implicitJacobian F hF)) : τ → MvPowerSeries σ R :=
   fun i d ↦ coeff d
@@ -373,7 +375,8 @@ theorem bijective_implicitJacobian_rename_sumComm {F : ι → MvPowerSeries (τ 
       (implicitJacobian (fun i ↦ rename (Equiv.sumComm τ σ) (F i)) hF.rename_sumComm) := by
   rwa [implicitJacobian_rename_sumComm]
 
-/-- The solution `α` of `F(α(X), X) = 0` given by `existsUnique_implicitFunctionLeft`. -/
+/-- The left implicit function, a solution `α` of `F(α(X), X) = 0`: the implicit function of
+`F` with its two variable blocks exchanged. -/
 def implicitFunctionLeft (F : ι → MvPowerSeries (τ ⊕ σ) R) (hF : HasSubst F)
     (hJ : Function.Bijective (implicitJacobianLeft F hF)) : τ → MvPowerSeries σ R :=
   implicitFunction (fun i ↦ rename (Equiv.sumComm τ σ) (F i)) hF.rename_sumComm
