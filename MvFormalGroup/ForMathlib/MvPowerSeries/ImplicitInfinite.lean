@@ -6,9 +6,6 @@ Authors: Wenrong Zou
 module
 
 public import Mathlib.LinearAlgebra.Determinant
-public import Mathlib.LinearAlgebra.Finsupp.LinearCombination
-public import Mathlib.LinearAlgebra.Finsupp.VectorSpace
-public import Mathlib.RingTheory.MvPowerSeries.Rename
 public import MvFormalGroup.ForMathlib.MvPowerSeries.Substitution
 
 /-!
@@ -307,10 +304,9 @@ private theorem implicitStep_contract (hKJ : ∀ v, K (implicitJacobian F hF v) 
   have key : n + 1 ≤
       (subst (Sum.elim X a) (X (Sum.inr i) - mapCoeffFinsupp K F hF.coeff_zero i) -
         subst (Sum.elim X b) (X (Sum.inr i) - mapCoeffFinsupp K F hF.coeff_zero i)).order := by
-    refine add_le_order_subst_sub hpa hpb
-      (fun s ↦ one_le_order_iff_constCoeff_eq_zero.mpr (by rcases s with s | s <;> simp [ha.2]))
-      (fun s ↦ one_le_order_iff_constCoeff_eq_zero.mpr (by rcases s with s | s <;> simp [hb.2]))
-      (by simp [h]) ?_
+    refine add_le_order_subst_sub hpa hpb (fun s ↦ ?_) (fun s ↦ ?_) (by simp [h]) ?_
+    · exact one_le_order_iff_constCoeff_eq_zero.mpr (by rcases s with s | s <;> simp [ha.2])
+    · exact one_le_order_iff_constCoeff_eq_zero.mpr (by rcases s with s | s <;> simp [hb.2])
     rintro (s | k) hs
     · simp at hs
     · have hk : coeffFinsupp F hF.coeff_zero (single (Sum.inr k) 1) =
