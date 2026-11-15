@@ -82,24 +82,24 @@ constant terms. -/
 @[no_expose]
 def inv : σ → MvPowerSeries σ R :=
   implicitFunctionLeft F.toSumPowerSeries F.hasSubst_toSumPowerSeries
-    F.bijective_implicitJacobianLeft
+    F.bijective_implicitJacobianLeft.2
 
 @[simp]
 theorem constantCoeff_inv (i : σ) : constantCoeff (F.inv i) = 0 :=
   constantCoeff_implicitFunctionLeft F.constantCoeff_toSumPowerSeries
-    F.hasSubst_toSumPowerSeries F.bijective_implicitJacobianLeft i
+    F.hasSubst_toSumPowerSeries F.bijective_implicitJacobianLeft.2 i
 
 /-- The inverse satisfies the cofinite condition, so it can be substituted. -/
 theorem hasSubst_inv : HasSubst F.inv :=
   HasSubst.implicitFunctionLeft F.constantCoeff_toSumPowerSeries
-    F.hasSubst_toSumPowerSeries F.bijective_implicitJacobianLeft
+    F.hasSubst_toSumPowerSeries F.bijective_implicitJacobianLeft.2
 
 /-- The inverse is a left inverse: `F(i(X), X) = 0`. -/
 @[simp]
 theorem inv_left (i : σ) : (F.toPowerSeries i).subst (uncurry ![F.inv, X]) = 0 := by
   rw [← F.subst_toSumPowerSeries F.hasSubst_inv .X]
   exact subst_implicitFunctionLeft F.constantCoeff_toSumPowerSeries
-    F.hasSubst_toSumPowerSeries F.bijective_implicitJacobianLeft i
+    F.hasSubst_toSumPowerSeries F.bijective_implicitJacobianLeft.2 i
 
 /-- Any substitutable left inverse with zero constant terms is `F.inv`. -/
 theorem eq_inv (a : σ → MvPowerSeries σ R) (ha : HasSubst a)
