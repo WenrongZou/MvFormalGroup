@@ -5,12 +5,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# 同一分支有新的 push 时，取消旧的 run，避免部署互相冲突
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -18,9 +12,30 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
       - uses: leanprover/lean-action@v1
+
+  docs:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Add swap (doc-gen4 runs out of memory otherwise)
+        run: |
+          sudo swapoff -a
+          sudo rm -f /mnt/swapfile
+          sudo fallocate -l 12G /mnt/swapfile
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
+          free -h
+      - uses: actions/checkout@v7
+      - uses: leanprover/lean-action@v1
       - uses: leanprover-community/docgen-action@v1
-        # 只在 push 到 main 时生成并部署文档
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
