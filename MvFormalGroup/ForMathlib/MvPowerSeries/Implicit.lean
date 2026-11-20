@@ -5,8 +5,8 @@ Authors: Wenrong Zou
 -/
 module
 
--- Superseded by `ImplicitInfinite.lean`: the finite case is
--- `MvPowerSeries.existsUnique_implicitFunction_of_isUnit_det`, obtained from
+-- Superseded by `ImplicitInfinite.lean`: use `MvPowerSeries.subst_implicitFunction` and
+-- `MvPowerSeries.eq_implicitFunction`, with the finite case obtained from
 -- `MvPowerSeries.bijective_implicitJacobian_of_isUnit_det`.
 -- The previous development is kept below, commented out.
 

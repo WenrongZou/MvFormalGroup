@@ -23,12 +23,12 @@ only finitely many `Fᵢ`. Consider the Jacobian `implicitJacobian F hF : (τ �
 
 * `MvPowerSeries.subst_implicitFunction`: existence, for a surjective Jacobian.
 * `MvPowerSeries.eq_of_subst_eq_subst`: uniqueness, for an injective Jacobian.
-* `MvPowerSeries.existsUnique_implicitFunction`: the formal implicit function theorem, for a
-  bijective Jacobian.
-* `MvPowerSeries.existsUnique_implicitFunctionLeft`: the same, solving for the first variable
-  block.
-* `MvPowerSeries.existsUnique_implicitFunction_of_isUnit_det`: the case of finitely many
-  equations with invertible Jacobian determinant.
+* `MvPowerSeries.eq_implicitFunction`: every solution equals `implicitFunction`, for a bijective
+  Jacobian.
+* `MvPowerSeries.subst_implicitFunctionLeft` and `MvPowerSeries.eq_implicitFunctionLeft`: existence
+  and uniqueness, solving for the first variable block.
+* `MvPowerSeries.bijective_implicitJacobian_of_isUnit_det`: an invertible Jacobian determinant
+  gives a bijective Jacobian for finitely many equations.
 -/
 
 @[expose] public section
@@ -118,56 +118,56 @@ variable (L : (ι →₀ R) →ₗ[R] (τ →₀ R)) {v : ι → MvPowerSeries �
   (hv : ∀ d, {i | coeff d (v i) ≠ 0}.Finite)
 
 variable (v) in
-/-- The vector of coefficients of `d` in the family `v`. -/
-def coeffFinsupp (d : σ →₀ ℕ) : ι →₀ R :=
+/-- The finitely supported coefficient vector of `d` in the family `v`. -/
+def vecCoeff (d : σ →₀ ℕ) : ι →₀ R :=
   Finsupp.ofSupportFinite (fun i ↦ coeff d (v i)) (hv d)
 
 @[simp]
-theorem coeffFinsupp_apply (d : σ →₀ ℕ) (i : ι) : coeffFinsupp v hv d i = coeff d (v i) :=
+theorem vecCoeff_apply (d : σ →₀ ℕ) (i : ι) : vecCoeff v hv d i = coeff d (v i) :=
   rfl
 
 variable (v) in
 /-- The family obtained by applying `L` to the coefficient vectors of `v`. -/
-def mapCoeffFinsupp : τ → MvPowerSeries σ R :=
-  fun j d ↦ L (coeffFinsupp v hv d) j
+def mapVecCoeff : τ → MvPowerSeries σ R :=
+  fun j d ↦ L (vecCoeff v hv d) j
 
-theorem coeff_mapCoeffFinsupp (j : τ) (d : σ →₀ ℕ) :
-    coeff d (mapCoeffFinsupp L v hv j) = L (coeffFinsupp v hv d) j :=
+theorem coeff_mapVecCoeff (j : τ) (d : σ →₀ ℕ) :
+    coeff d (mapVecCoeff L v hv j) = L (vecCoeff v hv d) j :=
   rfl
 
-theorem constantCoeff_mapCoeffFinsupp (hv0 : ∀ i, constantCoeff (v i) = 0) (j : τ) :
-    constantCoeff (mapCoeffFinsupp L v hv j) = 0 := by
-  have h : coeffFinsupp v hv 0 = 0 := by
+theorem constantCoeff_mapVecCoeff (hv0 : ∀ i, constantCoeff (v i) = 0) (j : τ) :
+    constantCoeff (mapVecCoeff L v hv j) = 0 := by
+  have h : vecCoeff v hv 0 = 0 := by
     ext i
     simpa using hv0 i
-  rw [← coeff_zero_eq_constantCoeff_apply, coeff_mapCoeffFinsupp, h, map_zero, Finsupp.zero_apply]
+  rw [← coeff_zero_eq_constantCoeff_apply, coeff_mapVecCoeff, h, map_zero, Finsupp.zero_apply]
 
-theorem mapCoeffFinsupp_eq_zero (h : ∀ i, v i = 0) (j : τ) : mapCoeffFinsupp L v hv j = 0 := by
+theorem mapVecCoeff_eq_zero (h : ∀ i, v i = 0) (j : τ) : mapVecCoeff L v hv j = 0 := by
   ext d
-  have hd : coeffFinsupp v hv d = 0 := by
+  have hd : vecCoeff v hv d = 0 := by
     ext i
     simp [h i]
-  rw [coeff_mapCoeffFinsupp, hd, map_zero, Finsupp.zero_apply, coeff_zero]
+  rw [coeff_mapVecCoeff, hd, map_zero, Finsupp.zero_apply, coeff_zero]
 
-theorem HasSubst.mapCoeffFinsupp (hv0 : ∀ i, constantCoeff (v i) = 0) :
-    HasSubst (mapCoeffFinsupp L v hv) where
-  const_coeff j := by simp [constantCoeff_mapCoeffFinsupp L hv hv0 j]
-  coeff_zero d := (L (coeffFinsupp v hv d)).hasFiniteSupport
+theorem HasSubst.mapVecCoeff (hv0 : ∀ i, constantCoeff (v i) = 0) :
+    HasSubst (mapVecCoeff L v hv) where
+  const_coeff j := by simp [constantCoeff_mapVecCoeff L hv hv0 j]
+  coeff_zero d := (L (vecCoeff v hv d)).hasFiniteSupport
 
 variable {L} in
-theorem eq_zero_of_mapCoeffFinsupp_eq_zero (hL : Injective L) (h : mapCoeffFinsupp L v hv = 0) :
+theorem eq_zero_of_mapVecCoeff_eq_zero (hL : Injective L) (h : mapVecCoeff L v hv = 0) :
     v = 0 := by
   ext i d
-  have hd : L (coeffFinsupp v hv d) = 0 :=
+  have hd : L (vecCoeff v hv d) = 0 :=
     Finsupp.ext fun j ↦ congrArg (coeff d) (congrFun h j)
   exact congr($((map_eq_zero_iff L hL).mp hd) i)
   -- exact DFunLike.congr_fun ((map_eq_zero_iff L hL).mp hd) i
 
 /-- Substitution commutes with the coefficientwise action of a linear map. -/
-theorem subst_mapCoeffFinsupp (hv' : HasSubst v) {a : σ → MvPowerSeries υ R} (ha : HasSubst a)
+theorem subst_mapVecCoeff (hv' : HasSubst v) {a : σ → MvPowerSeries υ R} (ha : HasSubst a)
     (j : τ) :
-    (mapCoeffFinsupp L v hv'.coeff_zero j).subst a =
-      mapCoeffFinsupp L (fun i ↦ (v i).subst a) (hv'.subst ha).coeff_zero j := by
+    (mapVecCoeff L v hv'.coeff_zero j).subst a =
+      mapVecCoeff L (fun i ↦ (v i).subst a) (hv'.subst ha).coeff_zero j := by
   classical
   ext e
   let c : (σ →₀ ℕ) → R := fun d ↦ coeff e (d.prod fun s n ↦ a s ^ n)
@@ -180,12 +180,12 @@ theorem subst_mapCoeffFinsupp (hv' : HasSubst v) {a : σ → MvPowerSeries υ R}
     rw [coeff_subst ha]
     exact (finsum_eq_sum_of_support_subset _ <| Function.support_subset_iff'.mpr <| by
       simp +contextual [c]).trans (Finset.sum_congr rfl fun d _ ↦ mul_comm _ _)
-  have hW : coeffFinsupp (fun i ↦ (v i).subst a) (hv'.subst ha).coeff_zero e =
-      ∑ d ∈ hD.toFinset, c d • coeffFinsupp v hv'.coeff_zero d := by
+  have hW : vecCoeff (fun i ↦ (v i).subst a) (hv'.subst ha).coeff_zero e =
+      ∑ d ∈ hD.toFinset, c d • vecCoeff v hv'.coeff_zero d := by
     ext i
     simp [hsub]
-  rw [coeff_mapCoeffFinsupp, hW, hsub]
-  simp [coeff_mapCoeffFinsupp]
+  rw [coeff_mapVecCoeff, hW, hsub]
+  simp [coeff_mapVecCoeff]
 
 end LinearMap
 
@@ -198,13 +198,13 @@ variable (F : ι → MvPowerSeries (σ ⊕ τ) R) (hF : HasSubst F)
 /-- The Jacobian of `F` in the second variable block, as a linear map: `eⱼ` is sent to the
 vector of coefficients of `Yⱼ` in the `Fᵢ`. -/
 def implicitJacobian : (τ →₀ R) →ₗ[R] (ι →₀ R) :=
-  Finsupp.linearCombination R fun j ↦ coeffFinsupp F hF.coeff_zero (single (Sum.inr j) 1)
+  Finsupp.linearCombination R fun j ↦ vecCoeff F hF.coeff_zero (single (Sum.inr j) 1)
 
 variable {F}
 
 theorem implicitJacobian_single (j : τ) (r : R) :
     implicitJacobian F hF (single j r) =
-      r • coeffFinsupp F hF.coeff_zero (single (Sum.inr j) 1) :=
+      r • vecCoeff F hF.coeff_zero (single (Sum.inr j) 1) :=
   Finsupp.linearCombination_single ..
 
 @[simp]
@@ -224,13 +224,13 @@ variable (F : ι → MvPowerSeries (τ ⊕ σ) R) (hF : HasSubst F)
 
 /-- The Jacobian of `F` in the first variable block, as a linear map. -/
 def implicitJacobianLeft : (τ →₀ R) →ₗ[R] (ι →₀ R) :=
-  Finsupp.linearCombination R fun j ↦ coeffFinsupp F hF.coeff_zero (single (Sum.inl j) 1)
+  Finsupp.linearCombination R fun j ↦ vecCoeff F hF.coeff_zero (single (Sum.inl j) 1)
 
 variable {F}
 
 theorem implicitJacobianLeft_single (j : τ) (r : R) :
     implicitJacobianLeft F hF (single j r) =
-      r • coeffFinsupp F hF.coeff_zero (single (Sum.inl j) 1) :=
+      r • vecCoeff F hF.coeff_zero (single (Sum.inl j) 1) :=
   Finsupp.linearCombination_single ..
 
 @[simp]
@@ -279,19 +279,19 @@ section Implicit
 variable {F : ι → MvPowerSeries (σ ⊕ τ) R} (hF0 : ∀ i, constantCoeff (F i) = 0)
   (hF : HasSubst F)
 
-private theorem coeffFinsupp_X_inr (k : τ) :
-    coeffFinsupp (X ∘ Sum.inr : τ → MvPowerSeries (σ ⊕ τ) R)
+private theorem vecCoeff_X_inr (k : τ) :
+    vecCoeff (X ∘ Sum.inr : τ → MvPowerSeries (σ ⊕ τ) R)
       (HasSubst.X.comp_injective Sum.inr_injective).coeff_zero (single (Sum.inr k) 1) =
       single k 1 := by
   classical
   ext j
   simp [coeff_index_single_X, Finsupp.single_apply]
 
-private theorem subst_mapCoeffFinsupp_X_inr (L : (τ →₀ R) →ₗ[R] (ι →₀ R))
+private theorem subst_mapVecCoeff_X_inr (L : (τ →₀ R) →ₗ[R] (ι →₀ R))
     {a : τ → MvPowerSeries σ R} (ha : HasSubst a) (i : ι) :
-    (mapCoeffFinsupp L (X ∘ Sum.inr) (HasSubst.X.comp_injective Sum.inr_injective).coeff_zero
-      i).subst (Sum.elim X a) = mapCoeffFinsupp L a ha.coeff_zero i := by
-  rw [subst_mapCoeffFinsupp L (HasSubst.X.comp_injective Sum.inr_injective)
+    (mapVecCoeff L (X ∘ Sum.inr) (HasSubst.X.comp_injective Sum.inr_injective).coeff_zero
+      i).subst (Sum.elim X a) = mapVecCoeff L a ha.coeff_zero i := by
+  rw [subst_mapVecCoeff L (HasSubst.X.comp_injective Sum.inr_injective)
     (HasSubst.X.sumElim ha) i]
   congr 1
   funext j
@@ -321,21 +321,21 @@ theorem eq_of_subst_eq_subst (hJ : Injective (implicitJacobian F hF))
     (hb : HasSubst b) (hb0 : ∀ j, constantCoeff (b j) = 0)
     (h : ∀ i, (F i).subst (Sum.elim X a) = (F i).subst (Sum.elim X b)) : a = b := by
   have hlin (i : ι) (k : τ) : coeff (single (Sum.inr k) 1)
-      (mapCoeffFinsupp (implicitJacobian F hF) (X ∘ Sum.inr)
+      (mapVecCoeff (implicitJacobian F hF) (X ∘ Sum.inr)
         (HasSubst.X.comp_injective Sum.inr_injective).coeff_zero i - F i) = 0 := by
-    rw [map_sub, coeff_mapCoeffFinsupp, coeffFinsupp_X_inr, implicitJacobian_single_one_apply,
+    rw [map_sub, coeff_mapVecCoeff, vecCoeff_X_inr, implicitJacobian_single_one_apply,
       sub_self]
   have key (n : ℕ) : ∀ j, (n : ℕ∞) ≤ (a j - b j).order := by
     induction n with
     | zero => simp
     | succ n ih =>
       have hc (d : σ →₀ ℕ) (hd : d.degree < n + 1) :
-          coeffFinsupp a ha.coeff_zero d = coeffFinsupp b hb.coeff_zero d := by
+          vecCoeff a ha.coeff_zero d = vecCoeff b hb.coeff_zero d := by
         refine hJ (Finsupp.ext fun i ↦ ?_)
         have := le_order_subst_sub_subst (hlin i) n ⟨ha, ha0⟩ ⟨hb, hb0⟩ ih
         rw [subst_sub (HasSubst.X.sumElim ha), subst_sub (HasSubst.X.sumElim hb), h i,
-          sub_sub_sub_cancel_right, subst_mapCoeffFinsupp_X_inr _ ha,
-          subst_mapCoeffFinsupp_X_inr _ hb] at this
+          sub_sub_sub_cancel_right, subst_mapVecCoeff_X_inr _ ha,
+          subst_mapVecCoeff_X_inr _ hb] at this
         exact coeff_eq_of_lt_order_sub ((Nat.cast_lt.mpr hd).trans_le this)
       intro j
       refine nat_le_order fun d hd ↦ ?_
@@ -354,14 +354,15 @@ variable (hJ : Surjective (implicitJacobian F hF))
 
 variable (F) in
 /-- The implicit function, an explicit solution `α` of `F(X, α(X)) = 0` when the Jacobian `J` is
-surjective. Let `K` be a right inverse of `J` and `T a = (K J)(a) - (K F)(X, a)`. The coefficient
-of `X^d` in `α` is the coefficient of `X^d` in `T^[deg d + 1] 0`. -/
-def implicitFunction : τ → MvPowerSeries σ R :=
-  fun j d ↦ coeff d (((fun a j ↦
-    (mapCoeffFinsupp (LinearMap.splittingOfFinsuppSurjective _ hJ ∘ₗ implicitJacobian F hF)
+surjective. -/
+def implicitFunction (j : τ) : MvPowerSeries σ R :=
+  /- Let `K` be a right inverse of `J` and `T a = (K J)(a) - (K F)(X, a)`. The coefficient
+    of `X^d` in `α` is the coefficient of `X^d` in `T^[deg d + 1] 0`. -/
+  fun d ↦ coeff d (((fun a j ↦
+    (mapVecCoeff (LinearMap.splittingOfFinsuppSurjective _ hJ ∘ₗ implicitJacobian F hF)
         (X ∘ Sum.inr : τ → MvPowerSeries (σ ⊕ τ) R)
         (HasSubst.X.comp_injective Sum.inr_injective).coeff_zero j -
-      mapCoeffFinsupp (LinearMap.splittingOfFinsuppSurjective _ hJ) F hF.coeff_zero j).subst
+      mapVecCoeff (LinearMap.splittingOfFinsuppSurjective _ hJ) F hF.coeff_zero j).subst
       (Sum.elim X a))^[d.degree + 1]) 0 j)
 
 variable (F) in
@@ -369,9 +370,9 @@ variable (F) in
 on all families. -/
 private def implicitStep (K : (ι →₀ R) →ₗ[R] (τ →₀ R)) (a : τ → MvPowerSeries σ R) (j : τ) :
     MvPowerSeries σ R :=
-  (mapCoeffFinsupp (K ∘ₗ implicitJacobian F hF) (X ∘ Sum.inr : τ → MvPowerSeries (σ ⊕ τ) R)
+  (mapVecCoeff (K ∘ₗ implicitJacobian F hF) (X ∘ Sum.inr : τ → MvPowerSeries (σ ⊕ τ) R)
       (HasSubst.X.comp_injective Sum.inr_injective).coeff_zero j -
-    mapCoeffFinsupp K F hF.coeff_zero j).subst (Sum.elim X a)
+    mapVecCoeff K F hF.coeff_zero j).subst (Sum.elim X a)
 
 private theorem implicitFunction_eq : implicitFunction F hF hJ =
     iterLimit (implicitStep F hF (LinearMap.splittingOfFinsuppSurjective _ hJ)) :=
@@ -388,10 +389,10 @@ private theorem implicitStep_admissible {a : τ → MvPowerSeries σ R}
   --   HasSubst.X.comp_injective Sum.inr_injective
   have hX0 (j : τ) : constantCoeff ((X ∘ Sum.inr : τ → MvPowerSeries (σ ⊕ τ) R) j) = 0 := by
     simp
-  refine ⟨((HasSubst.mapCoeffFinsupp _ (HasSubst.X.comp_injective Sum.inr_injective).coeff_zero
-    hX0).sub (HasSubst.mapCoeffFinsupp K hF.coeff_zero hF0)).subst hp, fun j ↦ ?_⟩
+  refine ⟨((HasSubst.mapVecCoeff _ (HasSubst.X.comp_injective Sum.inr_injective).coeff_zero
+    hX0).sub (HasSubst.mapVecCoeff K hF.coeff_zero hF0)).subst hp, fun j ↦ ?_⟩
   refine constantCoeff_subst_eq_zero hp (by rintro (s | t) <;> simp [ha.2]) ?_
-  rw [map_sub, constantCoeff_mapCoeffFinsupp _ _ hX0, constantCoeff_mapCoeffFinsupp _ _ hF0,
+  rw [map_sub, constantCoeff_mapVecCoeff _ _ hX0, constantCoeff_mapVecCoeff _ _ hF0,
     sub_zero]
 
 private theorem implicitStep_contract (n : ℕ) {a b : τ → MvPowerSeries σ R}
@@ -399,26 +400,26 @@ private theorem implicitStep_contract (n : ℕ) {a b : τ → MvPowerSeries σ R
     (hb : HasSubst b ∧ ∀ j, constantCoeff (b j) = 0) (h : ∀ j, n ≤ (a j - b j).order) (j : τ) :
     n + 1 ≤ (implicitStep F hF K a j - implicitStep F hF K b j).order := by
   refine le_order_subst_sub_subst (fun k ↦ ?_) n ha hb h
-  rw [map_sub, coeff_mapCoeffFinsupp, coeff_mapCoeffFinsupp, coeffFinsupp_X_inr,
+  rw [map_sub, coeff_mapVecCoeff, coeff_mapVecCoeff, vecCoeff_X_inr,
     LinearMap.comp_apply, implicitJacobian_single, one_smul, sub_self]
 
 private theorem implicitStep_eq {a : τ → MvPowerSeries σ R} (ha : HasSubst a) (j : τ) :
-    implicitStep F hF K a j = mapCoeffFinsupp (K ∘ₗ implicitJacobian F hF) a ha.coeff_zero j -
-      mapCoeffFinsupp K (fun i ↦ (F i).subst (Sum.elim X a))
+    implicitStep F hF K a j = mapVecCoeff (K ∘ₗ implicitJacobian F hF) a ha.coeff_zero j -
+      mapVecCoeff K (fun i ↦ (F i).subst (Sum.elim X a))
         (hF.subst (HasSubst.X.sumElim ha)).coeff_zero j := by
-  rw [implicitStep, subst_sub (HasSubst.X.sumElim ha), subst_mapCoeffFinsupp_X_inr _ ha,
-    subst_mapCoeffFinsupp K hF (HasSubst.X.sumElim ha)]
+  rw [implicitStep, subst_sub (HasSubst.X.sumElim ha), subst_mapVecCoeff_X_inr _ ha,
+    subst_mapVecCoeff K hF (HasSubst.X.sumElim ha)]
 
 /-- A fixed point of the step map is a solution, as soon as `K` is a right inverse of `J`. -/
 private theorem subst_eq_zero_of_implicitStep_eq (hJK : ∀ v, implicitJacobian F hF (K v) = v)
     {a : τ → MvPowerSeries σ R} (ha : HasSubst a) (hfix : implicitStep F hF K a = a) (i : ι) :
     (F i).subst (Sum.elim X a) = 0 := by
   ext d
-  have h : K (implicitJacobian F hF (coeffFinsupp a ha.coeff_zero d)) -
-      K (coeffFinsupp _ (hF.subst (HasSubst.X.sumElim ha)).coeff_zero d) =
-      coeffFinsupp a ha.coeff_zero d := by
+  have h : K (implicitJacobian F hF (vecCoeff a ha.coeff_zero d)) -
+      K (vecCoeff _ (hF.subst (HasSubst.X.sumElim ha)).coeff_zero d) =
+      vecCoeff a ha.coeff_zero d := by
     ext j
-    simpa [implicitStep_eq hF ha, coeff_mapCoeffFinsupp] using
+    simpa [implicitStep_eq hF ha, coeff_mapVecCoeff] using
       congrArg (coeff d) (congrFun hfix j)
   have := congrArg (implicitJacobian F hF) h
   rw [map_sub, hJK, hJK, sub_eq_self] at this
@@ -464,16 +465,6 @@ theorem eq_implicitFunction (a : τ → MvPowerSeries σ R) (ha : HasSubst a)
   eq_of_subst_eq_subst hF hJ.1 ha ha0 (HasSubst.implicitFunction hF0 hF hJ.2)
     (constantCoeff_implicitFunction hF0 hF hJ.2) fun i ↦ by
       rw [h, subst_implicitFunction hF0 hF hJ.2]
-
-/-- **Formal implicit function theorem**: if `F(0, 0) = 0` and the Jacobian is bijective, then
-`F(X, α(X)) = 0` has a unique substitutable solution `α` with `α(0) = 0`. -/
-theorem existsUnique_implicitFunction :
-    ∃! a : τ → MvPowerSeries σ R,
-      HasSubst a ∧ (∀ i, constantCoeff (a i) = 0) ∧ ∀ i, (F i).subst (Sum.elim X a) = 0 :=
-  ⟨_, ⟨HasSubst.implicitFunction hF0 hF hJ.2,
-      constantCoeff_implicitFunction hF0 hF hJ.2,
-      subst_implicitFunction hF0 hF hJ.2⟩,
-    fun a h ↦ eq_implicitFunction hF0 hF hJ a h.1 h.2.1 h.2.2⟩
 
 end Bijective
 
@@ -546,15 +537,6 @@ theorem eq_implicitFunctionLeft (a : τ → MvPowerSeries σ R) (ha : HasSubst a
     (constantCoeff_implicitFunctionLeft hF0 hF hJ.2) fun i ↦ by
       rw [h, subst_implicitFunctionLeft hF0 hF hJ.2]
 
-/-- **Formal implicit function theorem** for `F(α(X), X) = 0`. -/
-theorem existsUnique_implicitFunctionLeft :
-    ∃! a : τ → MvPowerSeries σ R,
-      HasSubst a ∧ (∀ i, constantCoeff (a i) = 0) ∧ ∀ i, (F i).subst (Sum.elim a X) = 0 :=
-  ⟨_, ⟨HasSubst.implicitFunctionLeft hF0 hF hJ.2,
-      constantCoeff_implicitFunctionLeft hF0 hF hJ.2,
-      subst_implicitFunctionLeft hF0 hF hJ.2⟩,
-    fun a h ↦ eq_implicitFunctionLeft hF0 hF hJ a h.1 h.2.1 h.2.2⟩
-
 end Bijective
 
 end ImplicitLeft
@@ -567,8 +549,8 @@ variable [Fintype τ] [DecidableEq τ]
 
 section
 
-variable {F : τ → MvPowerSeries (σ ⊕ τ) R} (hF0 : ∀ i, constantCoeff (F i) = 0)
-  (hF : HasSubst F) (hJ : IsUnit (Matrix.of fun i j ↦ coeff (single (Sum.inr j) 1) (F i)).det)
+variable {F : τ → MvPowerSeries (σ ⊕ τ) R} (hF : HasSubst F)
+  (hJ : IsUnit (Matrix.of fun i j ↦ coeff (single (Sum.inr j) 1) (F i)).det)
 
 include hJ
 
@@ -581,23 +563,12 @@ theorem bijective_implicitJacobian_of_isUnit_det : Bijective (implicitJacobian F
   rw [← h] at hJ
   exact (LinearEquiv.ofIsUnitDet hJ).bijective
 
-include hF0 in
-/-- **Formal implicit function theorem** for finitely many equations with invertible Jacobian
-determinant. -/
-theorem existsUnique_implicitFunction_of_isUnit_det :
-    ∃! a : τ → MvPowerSeries σ R,
-      (∀ i, constantCoeff (a i) = 0) ∧ ∀ i, (F i).subst (Sum.elim X a) = 0 := by
-  have hF' := hasSubst_of_constantCoeff_zero hF0
-  have hJ' := bijective_implicitJacobian_of_isUnit_det hF' hJ
-  exact ⟨_, ⟨constantCoeff_implicitFunction hF0 hF' hJ'.2, subst_implicitFunction hF0 hF' hJ'.2⟩,
-    fun a h ↦ eq_implicitFunction hF0 hF' hJ' a (hasSubst_of_constantCoeff_zero h.1) h.1 h.2⟩
-
 end
 
 section
 
-variable {F : τ → MvPowerSeries (τ ⊕ σ) R} (hF0 : ∀ i, constantCoeff (F i) = 0)
-  (hF : HasSubst F) (hJ : IsUnit (Matrix.of fun i j ↦ coeff (single (Sum.inl j) 1) (F i)).det)
+variable {F : τ → MvPowerSeries (τ ⊕ σ) R} (hF : HasSubst F)
+  (hJ : IsUnit (Matrix.of fun i j ↦ coeff (single (Sum.inl j) 1) (F i)).det)
 
 include hJ
 
@@ -609,18 +580,6 @@ theorem bijective_implicitJacobianLeft_of_isUnit_det : Bijective (implicitJacobi
     simp [LinearMap.toMatrix_apply]
   rw [← h] at hJ
   exact (LinearEquiv.ofIsUnitDet hJ).bijective
-
-include hF0 in
-/-- **Formal implicit function theorem** for `F(α(X), X) = 0`, for finitely many equations with
-invertible Jacobian determinant. -/
-theorem existsUnique_implicitFunctionLeft_of_isUnit_det :
-    ∃! a : τ → MvPowerSeries σ R,
-      (∀ i, constantCoeff (a i) = 0) ∧ ∀ i, (F i).subst (Sum.elim a X) = 0 := by
-  have hF' := hasSubst_of_constantCoeff_zero hF0
-  have hJ' := bijective_implicitJacobianLeft_of_isUnit_det hF' hJ
-  exact ⟨_, ⟨constantCoeff_implicitFunctionLeft hF0 hF' hJ'.2,
-      subst_implicitFunctionLeft hF0 hF' hJ'.2⟩,
-    fun a h ↦ eq_implicitFunctionLeft hF0 hF' hJ' a (hasSubst_of_constantCoeff_zero h.1) h.1 h.2⟩
 
 end
 
